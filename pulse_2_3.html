@@ -1,0 +1,2717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PULSE — Training &amp; Nutrition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3F6FB; --bg-soft:#E7EEF8;
+    --surface:#FFFFFF; --surface-2:#F7FAFE;
+    --ink:#1B2430; --ink-soft:#5C6B7F; --ink-faint:#98A6B8;
+    --line:#DDE6F2; --line-strong:#C4D2E5;
+    --accent:#2F6FED; --accent-ink:#FFFFFF; --accent-soft:#E1EAFB;
+    --accent2:#123A66; --accent2-soft:#DCE7F4;
+    --success:#3E7A52; --success-soft:#E4EFE6;
+    --danger:#B23A3A; --danger-soft:#F5E3E1;
+    --protein:#123A66; --carbs:#B5472C; --fat:#9A7B2E;
+    --radius-lg:18px; --radius-md:12px; --radius-sm:8px;
+    --shadow:0 1px 2px rgba(32,32,29,.04), 0 8px 24px rgba(32,32,29,.06);
+    --font-display:'Fraunces','Sora',serif;
+    --font-body:'Inter',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  button,input,select,textarea{font-family:inherit;}
+  button{cursor:pointer;}
+  a{color:var(--accent);}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;}
+  :focus-visible{outline:2px solid var(--accent2);outline-offset:2px;}
+
+  .shell{max-width:1080px;margin:0 auto;padding:0 20px 100px;}
+  header.topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 0 14px;gap:12px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-display);
+    font-weight:700;font-size:15px;flex:none;
+  }
+  .brand .name{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:-.01em;}
+  .who{display:flex;align-items:center;gap:10px;}
+  .avatar{
+    width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:700;font-size:13px;flex:none;border:none;
+  }
+  .iconbtn{
+    background:var(--surface);border:1px solid var(--line);border-radius:50%;
+    width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+    color:var(--ink-soft);font-size:15px;box-shadow:var(--shadow);
+  }
+  .iconbtn:hover{color:var(--ink);border-color:var(--line-strong);}
+
+  nav.tabs{
+    display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);
+    border-radius:999px;padding:4px;margin-bottom:20px;box-shadow:var(--shadow);
+    overflow-x:auto;
+  }
+  nav.tabs button{
+    flex:1;white-space:nowrap;border:none;background:transparent;border-radius:999px;
+    padding:9px 14px;font-size:13.5px;font-weight:600;color:var(--ink-soft);
+  }
+  nav.tabs button.active{background:var(--ink);color:#fff;}
+  nav.tabs button:hover:not(.active){color:var(--ink);}
+
+  .datebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;}
+  .datebar .dnav{display:flex;align-items:center;gap:8px;}
+  .datebar button.navbtn{
+    background:var(--surface);border:1px solid var(--line);border-radius:50%;
+    width:30px;height:30px;color:var(--ink);font-size:15px;box-shadow:var(--shadow);
+  }
+  .datebar .dlabel{font-family:var(--font-display);font-weight:600;font-size:16px;}
+  .today-pill{
+    font-size:11.5px;font-weight:700;border:1px solid var(--line-strong);color:var(--ink-soft);
+    border-radius:999px;padding:4px 11px;background:var(--surface);
+  }
+  .today-pill:hover{color:var(--ink);}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:820px){ .grid.overview{grid-template-columns:1.1fr .9fr;} .grid.two{grid-template-columns:1fr 1fr;} }
+
+  .card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);padding:20px 20px 18px;
+  }
+  .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+  .card-title{font-family:var(--font-display);font-weight:700;font-size:16.5px;margin:0;}
+  .card-sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .link-btn{background:none;border:none;color:var(--accent);font-weight:600;font-size:12.5px;padding:0;}
+
+  .ring-row{display:flex;align-items:center;gap:22px;margin:6px 0 14px;flex-wrap:wrap;}
+  .ring-wrap{position:relative;flex:none;width:126px;height:126px;}
+  .ring-wrap svg{transform:rotate(-90deg);}
+  .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring-num{font-family:var(--font-display);font-weight:700;font-size:24px;}
+  .ring-lbl{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;}
+  .macro-list{flex:1;min-width:150px;display:flex;flex-direction:column;gap:8px;}
+  .macro-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+  .macro-row .swatch{width:9px;height:9px;border-radius:3px;flex:none;}
+  .macro-row .bar-track{flex:1;height:6px;border-radius:4px;background:var(--bg-soft);overflow:hidden;}
+  .macro-row .bar-fill{height:100%;border-radius:4px;}
+  .macro-row .amt{color:var(--ink-soft);white-space:nowrap;}
+
+  .week{display:flex;gap:6px;align-items:flex-end;height:56px;padding:6px 2px 0;}
+  .week .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;height:100%;}
+  .week .bar{width:100%;max-width:22px;background:var(--bg-soft);border-radius:4px 4px 2px 2px;}
+  .week .col.active .bar{background:var(--accent);}
+  .week .dow{font-size:10px;color:var(--ink-faint);}
+  .week .col.active .dow{color:var(--accent);font-weight:700;}
+
+  .water-card .amount{font-family:var(--font-display);font-weight:700;font-size:26px;}
+  .water-track{height:10px;border-radius:6px;background:var(--bg-soft);overflow:hidden;margin:10px 0 12px;}
+  .water-fill{height:100%;background:var(--accent);border-radius:6px;}
+  .water-btns{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip-btn{
+    border:1px solid var(--line);background:var(--surface-2);border-radius:999px;
+    padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--ink);
+  }
+  .chip-btn:hover{border-color:var(--line-strong);}
+  .chip-btn.minus{color:var(--danger);}
+
+  .meal-block{margin-bottom:14px;}
+  .meal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .meal-name{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px;}
+  .meal-name .dot{width:8px;height:8px;border-radius:50%;}
+  .meal-cal{font-size:12px;color:var(--ink-soft);}
+  .add-chip{background:var(--ink);color:#fff;border:none;border-radius:999px;width:26px;height:26px;font-size:16px;line-height:1;}
+  .entry{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:9px 0;border-bottom:1px solid var(--line);
+  }
+  .entry:last-child{border-bottom:none;}
+  .entry .info{min-width:0;}
+  .entry .ename{font-weight:600;font-size:13.5px;}
+  .entry .emeta{font-size:11.5px;color:var(--ink-soft);display:flex;gap:8px;flex-wrap:wrap;margin-top:1px;}
+  .tag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:1px 6px;border-radius:5px;}
+  .tag.db{background:var(--accent2-soft);color:var(--accent2);}
+  .tag.ai{background:var(--accent-soft);color:var(--accent);}
+  .tag.web{background:var(--success-soft);color:var(--success);}
+  .tag.manual{background:var(--bg-soft);color:var(--ink-soft);}
+  .entry .eright{display:flex;align-items:center;gap:8px;flex:none;}
+  .entry .ecal{font-weight:700;font-size:13.5px;}
+  .del{background:none;border:none;color:var(--ink-faint);font-size:17px;width:22px;height:22px;border-radius:50%;}
+  .del:hover{color:var(--danger);background:var(--danger-soft);}
+  .empty{color:var(--ink-faint);font-size:12.5px;padding:8px 0;}
+
+  .add-panel{margin-top:10px;padding:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-md);}
+  .subtabs{display:flex;gap:4px;margin-bottom:10px;}
+  .subtabs button{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 8px;font-size:12px;font-weight:600;color:var(--ink-soft);}
+  .subtabs button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  input[type=text],input[type=number],input[type=search],select,textarea{
+    width:100%;background:var(--surface);border:1px solid var(--line);border-radius:9px;
+    padding:9px 11px;font-size:13.5px;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent2);}
+  .field{margin-bottom:9px;}
+  .field label{display:block;font-size:11.5px;color:var(--ink-soft);margin-bottom:4px;font-weight:600;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .btn{
+    border:none;border-radius:9px;padding:9px 14px;font-weight:700;font-size:13px;
+    background:var(--ink);color:#fff;
+  }
+  .btn:hover{opacity:.9;}
+  .btn.secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);}
+  .btn.accent{background:var(--accent);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .result-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .result-row:last-child{border-bottom:none;}
+  .result-name{font-weight:600;font-size:13px;}
+  .result-meta{font-size:11.5px;color:var(--ink-soft);}
+  .qty-input{width:64px;flex:none;}
+  .status-line{font-size:12px;color:var(--ink-soft);padding:6px 0;}
+  .status-line.err{color:var(--danger);}
+  .foods-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
+  .food-tile{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px;text-align:left;}
+  .food-tile:hover{border-color:var(--accent2);}
+  .food-tile .fn{font-weight:600;font-size:12.5px;}
+  .food-tile .fm{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+
+  .scanner-overlay{
+    position:fixed;inset:0;z-index:1000;background:rgba(10,14,20,.92);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;
+  }
+  .scanner-box{width:100%;max-width:420px;background:var(--surface);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow);}
+  .scanner-box h3{margin:0 0 10px;font-family:var(--font-display);font-size:16px;}
+  .scanner-video-region{width:100%;border-radius:var(--radius-md);overflow:hidden;background:#000;min-height:220px;}
+  .scanner-hint{font-size:12px;color:var(--ink-soft);margin-top:10px;}
+  .scanner-error{font-size:12.5px;color:var(--danger);margin-top:10px;}
+  .scanner-close{margin-top:12px;width:100%;}
+
+  .quicklog{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .quicklog input{flex:1;}
+  .ex-suggest{
+    position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:5;
+    background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;
+    box-shadow:var(--shadow);max-height:220px;overflow-y:auto;
+  }
+  .ex-suggest-row{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:8px 10px;}
+  .ex-suggest-row:last-child{border-bottom:none;}
+  .ex-suggest-row:hover{background:var(--surface-2);}
+  .ex-suggest-row .fn{display:block;font-weight:600;font-size:12.5px;}
+  .ex-suggest-row .fm{display:block;font-size:11px;color:var(--ink-soft);margin-top:1px;}
+
+  .exlist{display:flex;flex-direction:column;gap:12px;}
+  .exercise{border:1px solid var(--line);border-radius:var(--radius-md);padding:12px 14px;background:var(--surface-2);}
+  .exercise-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .exercise-head .en{font-weight:700;font-size:14px;}
+  .exercise-head .em{font-size:11px;color:var(--ink-soft);}
+  .sets{display:flex;flex-direction:column;gap:5px;margin-bottom:8px;}
+  .setrow{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:6px 9px;}
+  .setrow .sn{color:var(--ink-faint);font-size:11px;width:16px;}
+  .setrow .sd{flex:1;}
+  .addset-row{display:flex;gap:6px;align-items:center;}
+  .addset-row input{flex:1;}
+
+  .pr-list{display:flex;flex-direction:column;gap:8px;}
+  .pr-row{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);}
+  .pr-row:last-child{border-bottom:none;}
+  .pr-row .pn{font-weight:600;}
+  .pr-row .pv{color:var(--ink-soft);}
+
+  .stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .stat-card{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-md);padding:12px 14px;}
+  .stat-card .slabel{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;}
+  .stat-card .sval{font-family:var(--font-display);font-weight:700;font-size:22px;margin-top:3px;}
+  .stat-card .sdelta{font-size:11.5px;margin-top:3px;color:var(--ink-soft);}
+  .stat-card .sdelta.down{color:var(--success);}
+  .stat-card .sdelta.up{color:var(--danger);}
+  .trend-chart{margin-top:8px;}
+  .trend-dates{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-faint);margin-top:2px;}
+  .history-list{display:flex;flex-direction:column;margin-top:2px;}
+  .history-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .history-row:last-child{border-bottom:none;}
+  .history-row .hdate{color:var(--ink-soft);font-size:11.5px;min-width:78px;}
+  .history-row .hvals{flex:1;font-weight:600;}
+  .history-row .hvals span{color:var(--ink-soft);font-weight:400;margin-left:6px;}
+
+  .chat-shell{display:flex;flex-direction:column;height:min(70vh,620px);}
+  .chat-body{flex:1;overflow-y:auto;padding:6px 2px;display:flex;flex-direction:column;gap:10px;}
+  .msg{max-width:82%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;}
+  .msg.user{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:4px;}
+  .msg.assistant{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);border-bottom-left-radius:4px;}
+  .msg.system-note{align-self:center;background:var(--accent-soft);color:var(--accent);font-size:11.5px;padding:5px 10px;border-radius:999px;}
+  .typing{align-self:flex-start;font-size:12px;color:var(--ink-soft);padding:4px 10px;}
+  .chat-suggest{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;}
+  .chat-input-row{display:flex;gap:8px;margin-top:10px;}
+  .chat-input-row input{flex:1;}
+
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;
+    box-shadow:var(--shadow);z-index:50;max-width:90vw;text-align:center;
+  }
+
+  .setup-shell{max-width:560px;margin:40px auto;padding:0 20px 60px;}
+  .setup-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px 22px;box-shadow:var(--shadow);}
+  .setup-card h2{font-family:var(--font-display);margin:0 0 4px;font-size:22px;}
+  .setup-card p.lead{margin:0 0 20px;font-size:13.5px;color:var(--ink-soft);}
+  .seg{display:flex;flex-wrap:wrap;gap:6px;}
+  .seg button{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--ink);}
+  .seg button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .setup-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .goal-preview{margin-top:14px;padding:12px;background:var(--accent-soft);border-radius:10px;font-size:12.5px;color:var(--accent2);}
+
+  .photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;}
+  .photo-tile{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);}
+  .photo-tile img{width:100%;display:block;aspect-ratio:3/4;object-fit:cover;}
+  .photo-tile .pdate{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:10px;padding:3px 6px;}
+  .photo-tile .pdel{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;}
+  .photo-feedback{font-size:12.5px;color:var(--ink-soft);margin-top:8px;padding:10px;background:var(--surface-2);border-radius:9px;}
+
+  .footer-actions{text-align:center;margin-top:6px;}
+  .footer-actions button{background:none;border:none;color:var(--ink-faint);font-size:12px;text-decoration:underline;}
+  @media(max-width:600px){ .row3{grid-template-columns:1fr 1fr;} }
+</style>
+</head>
+<body>
+<div id="app" class="shell"><div style="padding:80px 0;text-align:center;color:var(--ink-soft);">Loading your log…</div></div>
+
+<!-- Free, open-source barcode/QR scanner (camera-based) — https://github.com/mebjas/html5-qrcode -->
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   CONFIG
+   ========================================================= */
+const STORAGE_SCHEMA_VERSION = 2;
+const MEAL_TYPES = [
+  {id:'breakfast', label:'Breakfast', color:'var(--accent)'},
+  {id:'lunch', label:'Lunch', color:'var(--accent2)'},
+  {id:'dinner', label:'Dinner', color:'var(--success)'},
+  {id:'snack', label:'Snacks', color:'#9A7B2E'}
+];
+const UNIT_OPTIONS = ['serving','g','oz','cup','tbsp','tsp','piece'];
+// Open Food Facts items carry the package's own serving size, so give them a
+// simpler, more relevant unit choice: portion (as printed on the label) vs.
+// grams, or vs. millilitres for liquids — instead of the full curated-DB list.
+function unitOptionsFor(food){
+  if(!food || food.source!=='web') return UNIT_OPTIONS;
+  const opts=[];
+  if(food.units && food.units.serving!=null) opts.push('serving');
+  opts.push(food.isLiquid ? 'ml' : 'g');
+  return opts;
+}
+function defaultQtyUnitFor(food){
+  if(food && food.source==='web'){
+    if(food.units && food.units.serving!=null) return { qty:'1', unit:'serving' };
+    return { qty:'100', unit: food.isLiquid?'ml':'g' };
+  }
+  return { qty:'1', unit: (food && food.units && Object.keys(food.units)[0]) ? Object.keys(food.units)[0] : 'g' };
+}
+
+/* =========================================================
+   UTILS
+   ========================================================= */
+const Utils = {
+  pad(n){ return String(n).padStart(2,'0'); },
+  dateKey(d){ return d.getFullYear()+'-'+Utils.pad(d.getMonth()+1)+'-'+Utils.pad(d.getDate()); },
+  parseDateKey(key){
+    if(typeof key!=='string') return new Date();
+    const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(key.trim());
+    if(!m) return new Date();
+    return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  },
+  addDays(d,n){ const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; },
+  isSameDay(a,b){ return Utils.dateKey(a)===Utils.dateKey(b); },
+  prettyDate(d){
+    const todayKey=Utils.dateKey(new Date());
+    const key=Utils.dateKey(d);
+    if(key===todayKey) return 'Today';
+    if(key===Utils.dateKey(Utils.addDays(new Date(),-1))) return 'Yesterday';
+    if(key===Utils.dateKey(Utils.addDays(new Date(),1))) return 'Tomorrow';
+    return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  },
+  uid(prefix){ return (prefix||'id')+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); },
+  esc(s){ const el=document.createElement('div'); el.textContent=s==null?'':String(s); return el.innerHTML; },
+  clamp(n,a,b){ return Math.max(a,Math.min(b,n)); },
+  round(n,dp){ dp=dp==null?1:dp; const f=Math.pow(10,dp); return Math.round((Number(n)||0+Number.EPSILON)*f)/f; },
+  roundInt(n){ return Math.round(Number(n)||0); },
+  num(n,fallback){ const v=Number(n); return Number.isFinite(v)?v:(fallback||0); },
+  isValidDateKey(s){ return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s); },
+  mlToL(ml){ return ml/1000; },
+  mlToOz(ml){ return ml/29.5735; },
+  ozToMl(oz){ return oz*29.5735; },
+  kgToLb(kg){ return kg*2.20462; },
+  lbToKg(lb){ return lb*0.453592; },
+  cmToFtIn(cm){ const totalIn=cm/2.54; const ft=Math.floor(totalIn/12); const inch=Math.round(totalIn-ft*12); return {ft,inch}; },
+  ftInToCm(ft,inch){ return ((ft||0)*12+(inch||0))*2.54; },
+  debounce(fn,ms){ let t=null; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args),ms); }; },
+  timeGreeting(){ const h=new Date().getHours(); return h<12?'Good morning':h<18?'Good afternoon':'Good evening'; },
+  initials(name){ if(!name) return '?'; const parts=name.trim().split(/\s+/); return (parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase(); },
+  avatarColor(name){
+    const colors=['#2F6FED','#123A66','#3E7A52','#9A7B2E','#6B4C8A'];
+    if(!name) return colors[0];
+    let h=0; for(let i=0;i<name.length;i++){ h=name.charCodeAt(i)+((h<<5)-h); }
+    return colors[Math.abs(h)%colors.length];
+  }
+};
+
+/* =========================================================
+   STORAGE — persists via the artifact's key/value storage API
+   (window.storage), namespaced with simple prefixed keys.
+   Falls back to an in-memory map if storage is unavailable so
+   the app still works within a single session.
+   ========================================================= */
+const Store = (function(){
+  // mem is the source of truth for anything read/written this session — it's
+  // checked BEFORE any network call, so a slow or rate-limited backend never
+  // makes an in-session change appear to disappear. Writes are optimistic
+  // (applied to mem immediately) and then queued to the backend one at a
+  // time with a small gap + retry, so rapid actions (e.g. adding several
+  // sets back-to-back) can't trip the platform's request rate limit.
+  const mem = {};
+  const hasRealStorage = !!(window.storage && typeof window.storage.get==='function');
+  const LS_PREFIX='pulse:';
+  let hasLocalStorage=false;
+  try{ const t='__pulse_ls_test__'; window.localStorage.setItem(t,'1'); window.localStorage.removeItem(t); hasLocalStorage=true; }catch(e){ hasLocalStorage=false; }
+  const THROTTLE_MS = 150;
+  let queue = Promise.resolve();
+  let warnedRecently = false;
+
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+  function isRateLimitErr(e){ return /rate limit/i.test((e && e.message) || String(e||'')); }
+
+  function enqueue(task){
+    const result = queue.then(task, task);
+    queue = result.then(()=>sleep(THROTTLE_MS), ()=>sleep(THROTTLE_MS));
+    return result;
+  }
+
+  async function withRetry(fn, retries){
+    retries = retries==null ? 3 : retries;
+    for(let attempt=0; ; attempt++){
+      try{ return await fn(); }
+      catch(e){
+        if(!isRateLimitErr(e) || attempt>=retries) throw e;
+        await sleep(500*(attempt+1));
+      }
+    }
+  }
+
+  function warnOnce(msg){
+    if(warnedRecently) return;
+    warnedRecently=true;
+    if(typeof showToast==='function') showToast(msg);
+    setTimeout(()=>{ warnedRecently=false; }, 15000);
+  }
+
+  async function get(key, fallback){
+    if(Object.prototype.hasOwnProperty.call(mem,key)) return mem[key];
+    if(!hasRealStorage){
+      if(hasLocalStorage){
+        try{
+          const raw=window.localStorage.getItem(LS_PREFIX+key);
+          const val = raw!=null ? JSON.parse(raw) : fallback;
+          mem[key]=val;
+          return val;
+        }catch(e){ return fallback; }
+      }
+      return fallback;
+    }
+    try{
+      const res = await enqueue(()=>withRetry(()=>window.storage.get(key, false)));
+      let val=fallback;
+      if(res && res.value!=null){ try{ val=JSON.parse(res.value); }catch(e){ val=fallback; } }
+      mem[key]=val;
+      return val;
+    }catch(e){
+      if(!isRateLimitErr(e)) mem[key]=fallback; // treat as "not found"; don't cache a rate-limit as empty
+      else warnOnce('Storage is briefly rate-limited — your changes are kept for this session and syncing will retry automatically.');
+      return fallback;
+    }
+  }
+
+  async function set(key, value){
+    mem[key]=value; // applied immediately so the UI and any subsequent get() never lose this
+    if(!hasRealStorage){
+      if(hasLocalStorage){
+        try{ window.localStorage.setItem(LS_PREFIX+key, JSON.stringify(value)); }
+        catch(e){ warnOnce('Could not save to browser storage (it may be full or disabled) — your changes are kept for this session.'); }
+      }
+      return true;
+    }
+    try{
+      await enqueue(()=>withRetry(()=>window.storage.set(key, JSON.stringify(value), false)));
+      return true;
+    }catch(e){
+      console.error('storage set failed for', key, e);
+      warnOnce(isRateLimitErr(e)
+        ? 'Storage is briefly rate-limited — your changes are kept for this session and syncing will retry automatically.'
+        : 'Could not save to persistent storage — your changes are kept for this session.');
+      return false;
+    }
+  }
+  async function del(key){
+    delete mem[key];
+    if(!hasRealStorage){
+      if(hasLocalStorage){ try{ window.localStorage.removeItem(LS_PREFIX+key); }catch(e){} }
+      return;
+    }
+    try{ await enqueue(()=>withRetry(()=>window.storage.delete(key, false))); }catch(e){}
+  }
+  async function list(prefix){
+    let keys=[];
+    if(hasRealStorage){
+      try{ const res=await enqueue(()=>withRetry(()=>window.storage.list(prefix, false))); keys=(res && res.keys)?res.keys.slice():[]; }
+      catch(e){ keys=[]; }
+    } else if(hasLocalStorage){
+      try{
+        for(let i=0;i<window.localStorage.length;i++){
+          const lsKey=window.localStorage.key(i);
+          if(lsKey && lsKey.indexOf(LS_PREFIX+prefix)===0) keys.push(lsKey.slice(LS_PREFIX.length));
+        }
+      }catch(e){}
+    }
+    Object.keys(mem).forEach(k=>{ if(k.indexOf(prefix)===0 && keys.indexOf(k)===-1) keys.push(k); });
+    return keys;
+  }
+  return { get, set, del, list };
+})();
+
+/* =========================================================
+   DAY / WORKOUT / WATER LOGS — persistence for dated records
+   ========================================================= */
+function isValidEntry(e){
+  return e && typeof e==='object' && typeof e.name==='string';
+}
+function sanitizeEntries(arr){
+  return Array.isArray(arr) ? arr.filter(isValidEntry).map(e=>({
+    id:e.id||Utils.uid('food'), mealType:e.mealType||'snack', name:e.name,
+    brand:e.brand||'', serving:e.serving||'', quantity:Utils.num(e.quantity,1), unit:e.unit||'serving',
+    calories:Utils.num(e.calories), protein:Utils.num(e.protein), carbs:Utils.num(e.carbs), fat:Utils.num(e.fat),
+    source:e.source||'manual', sourceLabel:e.sourceLabel||''
+  })) : [];
+}
+const DayLog = {
+  async get(dateKey){ return sanitizeEntries(await Store.get('log:'+dateKey, [])); },
+  async set(dateKey, entries){
+    const clean=sanitizeEntries(entries);
+    await Store.set('log:'+dateKey, clean);
+    return clean;
+  }
+};
+function sanitizeWorkout(w){
+  if(!w || !Array.isArray(w.entries)) return {entries:[]};
+  return {entries:w.entries.filter(e=>e&&e.exerciseName).map(e=>({
+    id:e.id||Utils.uid('ex'), exerciseName:e.exerciseName, category:e.category||'',
+    sets:Array.isArray(e.sets)?e.sets.map(s=>({
+      id:s.id||Utils.uid('set'), reps:s.reps!=null?Utils.num(s.reps):null, weight:s.weight!=null?Utils.num(s.weight):null,
+      weightUnit:s.weightUnit||'lb', distanceKm:s.distanceKm!=null?Utils.num(s.distanceKm):null,
+      durationSec:s.durationSec!=null?Utils.num(s.durationSec):null, notes:s.notes||''
+    })):[]
+  }))};
+}
+const WorkoutLog = {
+  async get(dateKey){ return sanitizeWorkout(await Store.get('workout:'+dateKey, {entries:[]})); },
+  async set(dateKey, workout){
+    const clean=sanitizeWorkout(workout);
+    await Store.set('workout:'+dateKey, clean);
+    return clean;
+  }
+};
+const WaterLog = {
+  async get(dateKey){ const w=await Store.get('water:'+dateKey,{ml:0}); return {ml:Utils.clamp(Utils.num(w&&w.ml),0,15000)}; },
+  async set(dateKey, ml){ const clean={ml:Utils.clamp(Utils.num(ml),0,15000)}; await Store.set('water:'+dateKey, clean); return clean; }
+};
+const Profile = {
+  async get(){ return await Store.get('profile', null); },
+  async set(p){ await Store.set('profile', p); return p; }
+};
+function sanitizeWeightEntries(arr){
+  return Array.isArray(arr) ? arr.filter(e=>e && typeof e==='object' && Utils.isValidDateKey(e.date))
+    .map(e=>({
+      id:e.id||Utils.uid('wt'), date:e.date,
+      weightKg: e.weightKg!=null && e.weightKg!=='' ? Utils.num(e.weightKg) : null,
+      bodyFatPct: e.bodyFatPct!=null && e.bodyFatPct!=='' ? Utils.num(e.bodyFatPct) : null
+    }))
+    .sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0) : [];
+}
+const WeightLog = {
+  async getAll(){ return sanitizeWeightEntries(await Store.get('weightlog', [])); },
+  async upsert(dateKey, weightKg, bodyFatPct){
+    const all=await WeightLog.getAll();
+    const idx=all.findIndex(e=>e.date===dateKey);
+    const entry={
+      id: idx>=0 ? all[idx].id : Utils.uid('wt'), date:dateKey,
+      weightKg: weightKg!=null && weightKg!=='' ? Utils.num(weightKg) : null,
+      bodyFatPct: bodyFatPct!=null && bodyFatPct!=='' ? Utils.num(bodyFatPct) : null
+    };
+    if(idx>=0) all[idx]=entry; else all.push(entry);
+    const clean=sanitizeWeightEntries(all);
+    await Store.set('weightlog', clean);
+    return clean;
+  },
+  async remove(id){
+    const all=await WeightLog.getAll();
+    const updated=all.filter(e=>e.id!==id);
+    await Store.set('weightlog', updated);
+    return updated;
+  }
+};
+
+/* =========================================================
+   CALC
+   ========================================================= */
+const Calc = {
+  totals(entries){
+    return (entries||[]).reduce((acc,e)=>({
+      calories:acc.calories+(Utils.num(e.calories)), protein:acc.protein+(Utils.num(e.protein)),
+      carbs:acc.carbs+(Utils.num(e.carbs)), fat:acc.fat+(Utils.num(e.fat))
+    }),{calories:0,protein:0,carbs:0,fat:0});
+  },
+  ACTIVITY:[
+    {id:'sedentary',label:'Sedentary (little/no exercise)',mult:1.2},
+    {id:'light',label:'Light (1-3 days/week)',mult:1.375},
+    {id:'moderate',label:'Moderate (3-5 days/week)',mult:1.55},
+    {id:'active',label:'Active (6-7 days/week)',mult:1.725},
+    {id:'veryactive',label:'Very active (2x/day)',mult:1.9}
+  ],
+  GOALTYPES:[
+    {id:'lose_fat',label:'Lose fat'}, {id:'maintain',label:'Maintain'},
+    {id:'build_lean',label:'Build muscle & stay lean'}, {id:'bulk',label:'Bulk up'}
+  ],
+  computeGoalsFromProfile(p){
+    const bmr = p.sex==='female' ? 10*p.weightKg+6.25*p.heightCm-5*p.age-161
+      : p.sex==='male' ? 10*p.weightKg+6.25*p.heightCm-5*p.age+5
+      : 10*p.weightKg+6.25*p.heightCm-5*p.age-78;
+    const act = Calc.ACTIVITY.find(a=>a.id===p.activityLevel) || Calc.ACTIVITY[1];
+    const tdee = bmr*act.mult;
+    let calMult=1, proteinPerKg=1.8;
+    if(p.goalType==='lose_fat'){ calMult=0.82; proteinPerKg=2.2; }
+    else if(p.goalType==='maintain'){ calMult=1; proteinPerKg=1.8; }
+    else if(p.goalType==='build_lean'){ calMult=1.08; proteinPerKg=2.0; }
+    else if(p.goalType==='bulk'){ calMult=1.15; proteinPerKg=1.8; }
+    const calories=Math.round(tdee*calMult);
+    const protein=Math.round(p.weightKg*proteinPerKg);
+    const fat=Math.round((calories*0.25)/9);
+    const carbs=Math.max(0,Math.round((calories-protein*4-fat*9)/4));
+    const waterMl=Math.round(Utils.clamp(p.weightKg*33,1800,4000));
+    return {calories,protein,carbs,fat,waterMl};
+  },
+  epley1RM(weight,reps){ if(!weight||!reps) return 0; return weight*(1+reps/30); },
+  bestSetSummary(sets){
+    let best=null;
+    (sets||[]).forEach(s=>{
+      if(s.weight!=null && s.reps!=null){
+        const est=Calc.epley1RM(s.weight,s.reps);
+        if(!best || est>best.est) best={weight:s.weight,reps:s.reps,est,weightUnit:s.weightUnit||'lb'};
+      }
+    });
+    return best;
+  },
+  formatDuration(sec){
+    sec=Math.max(0,Math.round(Utils.num(sec)));
+    const mm=Math.floor(sec/60), ss=sec%60;
+    return mm+':'+Utils.pad(ss);
+  },
+  paceSecPerKm(durationSec, distanceKm){
+    if(!durationSec || !distanceKm) return null;
+    const p=durationSec/distanceKm;
+    return isFinite(p) ? p : null;
+  },
+  formatPace(durationSec, distanceKm){
+    const p=Calc.paceSecPerKm(durationSec, distanceKm);
+    return p==null ? '' : Calc.formatDuration(p)+'/km';
+  },
+  bestPaceSummary(sets){
+    let best=null;
+    (sets||[]).forEach(s=>{
+      const pace=Calc.paceSecPerKm(s.durationSec, s.distanceKm);
+      if(pace!=null && (!best || pace<best.pace)) best={pace, distanceKm:s.distanceKm, durationSec:s.durationSec};
+    });
+    return best;
+  },
+  volumeInfo(sets){
+    let repsVol=0, hasReps=false, distSum=0, hasDist=false;
+    (sets||[]).forEach(s=>{
+      if(s.reps!=null){ hasReps=true; repsVol += s.reps*(s.weight!=null && s.weight>0 ? s.weight : 1); }
+      if(s.distanceKm!=null){ hasDist=true; distSum += s.distanceKm; }
+    });
+    if(hasReps) return {type:'volume', value:repsVol};
+    if(hasDist) return {type:'distance', value:distSum};
+    return null;
+  }
+};
+
+/* =========================================================
+   FOOD DATABASE — curated instant-lookup common foods
+   ========================================================= */
+const FoodDB = {
+  items:[
+    {name:'Chicken breast, cooked',cat:'protein',per100:{cal:165,protein:31,carbs:0,fat:3.6},units:{piece:172}},
+    {name:'Lean ground beef (90/10), cooked',cat:'protein',per100:{cal:176,protein:26,carbs:0,fat:8}},
+    {name:'Ground beef (80/20), cooked',cat:'protein',per100:{cal:254,protein:25,carbs:0,fat:17}},
+    {name:'Egg, large',cat:'protein',per100:{cal:143,protein:13,carbs:1.1,fat:9.5},units:{piece:50}},
+    {name:'Salmon, cooked',cat:'protein',per100:{cal:206,protein:22,carbs:0,fat:13}},
+    {name:'Tuna, canned in water',cat:'protein',per100:{cal:116,protein:26,carbs:0,fat:1}},
+    {name:'Shrimp, cooked',cat:'protein',per100:{cal:99,protein:24,carbs:0.2,fat:0.3}},
+    {name:'Turkey breast, cooked',cat:'protein',per100:{cal:135,protein:30,carbs:0,fat:1}},
+    {name:'Tofu, firm',cat:'protein',per100:{cal:144,protein:15,carbs:3,fat:9}},
+    {name:'Greek yogurt, plain nonfat',cat:'dairy',per100:{cal:59,protein:10,carbs:3.6,fat:0.4}},
+    {name:'Cottage cheese, low-fat',cat:'dairy',per100:{cal:81,protein:11,carbs:3.4,fat:2.3}},
+    {name:'Whole milk',cat:'dairy',per100:{cal:61,protein:3.2,carbs:4.8,fat:3.3},units:{cup:244}},
+    {name:'Skim milk',cat:'dairy',per100:{cal:34,protein:3.4,carbs:5,fat:0.2},units:{cup:245}},
+    {name:'Cheddar cheese',cat:'dairy',per100:{cal:403,protein:25,carbs:1.3,fat:33}},
+    {name:'Cream cheese',cat:'dairy',per100:{cal:342,protein:6,carbs:4,fat:34}},
+    {name:'Whey protein powder',cat:'protein',per100:{cal:400,protein:80,carbs:8,fat:6},units:{serving:31}},
+    {name:'Protein shake, ready-to-drink',cat:'protein',per100:{cal:63,protein:9,carbs:3,fat:1.5},units:{serving:330}},
+    {name:'White rice, cooked',cat:'grain',per100:{cal:130,protein:2.7,carbs:28,fat:0.3},units:{cup:158}},
+    {name:'Brown rice, cooked',cat:'grain',per100:{cal:123,protein:2.7,carbs:26,fat:1},units:{cup:195}},
+    {name:'Quinoa, cooked',cat:'grain',per100:{cal:120,protein:4.4,carbs:21,fat:1.9},units:{cup:185}},
+    {name:'Pasta, cooked',cat:'grain',per100:{cal:158,protein:5.8,carbs:31,fat:0.9},units:{cup:140}},
+    {name:'Oats, dry',cat:'grain',per100:{cal:389,protein:16.9,carbs:66,fat:6.9},units:{cup:81}},
+    {name:'White bread',cat:'grain',per100:{cal:265,protein:9,carbs:49,fat:3.2},units:{piece:28}},
+    {name:'Whole wheat bread',cat:'grain',per100:{cal:247,protein:13,carbs:41,fat:3.4},units:{piece:28}},
+    {name:'Bagel, plain',cat:'grain',per100:{cal:257,protein:10,carbs:50,fat:1.5},units:{piece:105}},
+    {name:'Tortilla, flour',cat:'grain',per100:{cal:312,protein:8,carbs:51,fat:8},units:{piece:45}},
+    {name:'Granola',cat:'grain',per100:{cal:471,protein:10,carbs:64,fat:20}},
+    {name:'Cereal, generic',cat:'grain',per100:{cal:379,protein:7,carbs:83,fat:2.5}},
+    {name:'Black beans, cooked',cat:'legume',per100:{cal:132,protein:8.9,carbs:24,fat:0.5},units:{cup:172}},
+    {name:'Lentils, cooked',cat:'legume',per100:{cal:116,protein:9,carbs:20,fat:0.4},units:{cup:198}},
+    {name:'Chickpeas, cooked',cat:'legume',per100:{cal:164,protein:8.9,carbs:27,fat:2.6},units:{cup:164}},
+    {name:'Hummus',cat:'legume',per100:{cal:166,protein:7.9,carbs:14,fat:9.6}},
+    {name:'Banana',cat:'fruit',per100:{cal:89,protein:1.1,carbs:23,fat:0.3},units:{piece:118}},
+    {name:'Apple',cat:'fruit',per100:{cal:52,protein:0.3,carbs:14,fat:0.2},units:{piece:182}},
+    {name:'Orange',cat:'fruit',per100:{cal:47,protein:0.9,carbs:12,fat:0.1},units:{piece:131}},
+    {name:'Avocado',cat:'fruit',per100:{cal:160,protein:2,carbs:8.5,fat:15},units:{piece:150}},
+    {name:'Strawberries',cat:'fruit',per100:{cal:32,protein:0.7,carbs:7.7,fat:0.3},units:{cup:152}},
+    {name:'Blueberries',cat:'fruit',per100:{cal:57,protein:0.7,carbs:14.5,fat:0.3},units:{cup:148}},
+    {name:'Broccoli, cooked',cat:'veg',per100:{cal:35,protein:2.4,carbs:7,fat:0.4},units:{cup:156}},
+    {name:'Spinach, raw',cat:'veg',per100:{cal:23,protein:2.9,carbs:3.6,fat:0.4},units:{cup:30}},
+    {name:'Sweet potato, baked',cat:'veg',per100:{cal:90,protein:2,carbs:21,fat:0.2},units:{piece:114}},
+    {name:'Potato, baked',cat:'veg',per100:{cal:93,protein:2.5,carbs:21,fat:0.1},units:{piece:173}},
+    {name:'Carrot',cat:'veg',per100:{cal:41,protein:0.9,carbs:10,fat:0.2},units:{piece:61}},
+    {name:'Bell pepper',cat:'veg',per100:{cal:31,protein:1,carbs:6,fat:0.3},units:{piece:119}},
+    {name:'Almonds',cat:'nuts',per100:{cal:579,protein:21,carbs:22,fat:50},units:{tbsp:9}},
+    {name:'Walnuts',cat:'nuts',per100:{cal:654,protein:15,carbs:14,fat:65}},
+    {name:'Peanut butter',cat:'nuts',per100:{cal:588,protein:25,carbs:20,fat:50},units:{tbsp:16}},
+    {name:'Olive oil',cat:'fat',per100:{cal:884,protein:0,carbs:0,fat:100},units:{tbsp:13.5,tsp:4.5}},
+    {name:'Butter',cat:'fat',per100:{cal:717,protein:0.9,carbs:0.1,fat:81},units:{tbsp:14,tsp:4.7}},
+    {name:'Honey',cat:'sweet',per100:{cal:304,protein:0.3,carbs:82,fat:0},units:{tbsp:21,tsp:7}},
+    {name:'Sugar, white',cat:'sweet',per100:{cal:387,protein:0,carbs:100,fat:0},units:{tbsp:12.5,tsp:4.2}},
+    {name:'Pizza slice, cheese',cat:'meal',per100:{cal:266,protein:11,carbs:33,fat:10},units:{piece:107}},
+    {name:'Hamburger, fast food',cat:'meal',per100:{cal:295,protein:17,carbs:24,fat:14},units:{piece:110}},
+    {name:'French fries',cat:'meal',per100:{cal:312,protein:3.4,carbs:41,fat:15}},
+    {name:'Protein bar',cat:'meal',per100:{cal:370,protein:30,carbs:35,fat:12},units:{piece:60}},
+    {name:'Bacon, cooked',cat:'protein',per100:{cal:541,protein:37,carbs:1.4,fat:42},units:{piece:8}},
+    {name:'Coffee, black',cat:'drink',per100:{cal:2,protein:0.1,carbs:0,fat:0},units:{cup:240}},
+    {name:'Latte with whole milk',cat:'drink',per100:{cal:61,protein:3.2,carbs:4.8,fat:3.3},units:{cup:240}},
+    {name:'Chicken thigh, cooked, skinless',cat:'protein',per100:{cal:209,protein:26,carbs:0,fat:10.9},units:{piece:116}},
+    {name:'Chicken breast, raw',cat:'protein',per100:{cal:120,protein:22.5,carbs:0,fat:2.6}},
+    {name:'Chicken wing, cooked',cat:'protein',per100:{cal:290,protein:27,carbs:0,fat:19.5},units:{piece:29}},
+    {name:'Chicken drumstick, cooked',cat:'protein',per100:{cal:172,protein:28.3,carbs:0,fat:5.7},units:{piece:52}},
+    {name:'Duck breast, cooked',cat:'protein',per100:{cal:201,protein:23.5,carbs:0,fat:11.2}},
+    {name:'Pork chop, cooked',cat:'protein',per100:{cal:231,protein:26,carbs:0,fat:13.6}},
+    {name:'Pork tenderloin, cooked',cat:'protein',per100:{cal:143,protein:26,carbs:0,fat:3.5}},
+    {name:'Ham, sliced',cat:'protein',per100:{cal:145,protein:21,carbs:1.5,fat:5.5}},
+    {name:'Sausage, pork',cat:'protein',per100:{cal:301,protein:12,carbs:2,fat:27},units:{piece:75}},
+    {name:'Steak, sirloin, cooked',cat:'protein',per100:{cal:201,protein:29,carbs:0,fat:8.7}},
+    {name:'Ribeye steak, cooked',cat:'protein',per100:{cal:291,protein:24,carbs:0,fat:21}},
+    {name:'Filet mignon, cooked',cat:'protein',per100:{cal:227,protein:28,carbs:0,fat:12}},
+    {name:'Lamb chop, cooked',cat:'protein',per100:{cal:294,protein:25,carbs:0,fat:21}},
+    {name:'Ground turkey, cooked',cat:'protein',per100:{cal:203,protein:27,carbs:0,fat:10.4}},
+    {name:'Ground chicken, cooked',cat:'protein',per100:{cal:189,protein:24.9,carbs:0,fat:9.6}},
+    {name:'Cod, cooked',cat:'protein',per100:{cal:105,protein:23,carbs:0,fat:0.9}},
+    {name:'Tilapia, cooked',cat:'protein',per100:{cal:128,protein:26,carbs:0,fat:2.7}},
+    {name:'Halibut, cooked',cat:'protein',per100:{cal:140,protein:27,carbs:0,fat:2.9}},
+    {name:'Sardines, canned in oil',cat:'protein',per100:{cal:208,protein:24.6,carbs:0,fat:11.5}},
+    {name:'Crab meat, cooked',cat:'protein',per100:{cal:97,protein:20,carbs:0,fat:1.5}},
+    {name:'Scallops, cooked',cat:'protein',per100:{cal:111,protein:20.5,carbs:5,fat:0.8}},
+    {name:'Mussels, cooked',cat:'protein',per100:{cal:172,protein:24,carbs:7.4,fat:4.5}},
+    {name:'Egg white',cat:'protein',per100:{cal:52,protein:11,carbs:0.7,fat:0.2},units:{piece:33}},
+    {name:'Egg, fried',cat:'protein',per100:{cal:196,protein:13.6,carbs:0.8,fat:15},units:{piece:61}},
+    {name:'Egg, boiled',cat:'protein',per100:{cal:155,protein:12.6,carbs:1.1,fat:10.6},units:{piece:50}},
+    {name:'Tempeh',cat:'protein',per100:{cal:192,protein:20.3,carbs:7.6,fat:10.8}},
+    {name:'Seitan',cat:'protein',per100:{cal:370,protein:75,carbs:14,fat:1.9}},
+    {name:'Edamame, cooked',cat:'protein',per100:{cal:121,protein:11.9,carbs:8.9,fat:5.2},units:{cup:155}},
+    {name:'Casein protein powder',cat:'protein',per100:{cal:363,protein:78,carbs:6,fat:2},units:{serving:33}},
+    {name:'Plant-based protein powder (pea)',cat:'protein',per100:{cal:380,protein:78,carbs:5,fat:5},units:{serving:30}},
+    {name:'2% milk',cat:'dairy',per100:{cal:50,protein:3.3,carbs:4.9,fat:1.9},units:{cup:244}},
+    {name:'Almond milk, unsweetened',cat:'dairy',per100:{cal:15,protein:0.6,carbs:0.6,fat:1.2},units:{cup:240}},
+    {name:'Oat milk',cat:'dairy',per100:{cal:47,protein:1,carbs:7.5,fat:1.5},units:{cup:240}},
+    {name:'Soy milk, unsweetened',cat:'dairy',per100:{cal:33,protein:2.9,carbs:1.2,fat:1.6},units:{cup:243}},
+    {name:'Greek yogurt, plain whole milk',cat:'dairy',per100:{cal:97,protein:9,carbs:3.9,fat:5}},
+    {name:'Yogurt, flavored low-fat',cat:'dairy',per100:{cal:98,protein:3.5,carbs:19,fat:1.1}},
+    {name:'Mozzarella cheese',cat:'dairy',per100:{cal:280,protein:28,carbs:3.1,fat:17}},
+    {name:'Parmesan cheese',cat:'dairy',per100:{cal:431,protein:38,carbs:4.1,fat:29},units:{tbsp:5}},
+    {name:'Feta cheese',cat:'dairy',per100:{cal:264,protein:14,carbs:4,fat:21}},
+    {name:'Swiss cheese',cat:'dairy',per100:{cal:380,protein:27,carbs:5.4,fat:28}},
+    {name:'String cheese',cat:'dairy',per100:{cal:302,protein:24,carbs:2.3,fat:22},units:{piece:28}},
+    {name:'Sour cream',cat:'dairy',per100:{cal:198,protein:2.4,carbs:4.6,fat:19.4},units:{tbsp:12}},
+    {name:'Heavy cream',cat:'dairy',per100:{cal:340,protein:2.1,carbs:2.8,fat:36},units:{tbsp:15}},
+    {name:'Ice cream, vanilla',cat:'dairy',per100:{cal:207,protein:3.5,carbs:23.6,fat:11},units:{cup:132}},
+    {name:'Jasmine rice, cooked',cat:'grain',per100:{cal:129,protein:2.7,carbs:28,fat:0.2},units:{cup:163}},
+    {name:'Basmati rice, cooked',cat:'grain',per100:{cal:121,protein:3.5,carbs:25,fat:0.4},units:{cup:163}},
+    {name:'Sushi rice, cooked',cat:'grain',per100:{cal:143,protein:2.4,carbs:32,fat:0.2}},
+    {name:'Couscous, cooked',cat:'grain',per100:{cal:112,protein:3.8,carbs:23,fat:0.2},units:{cup:157}},
+    {name:'Barley, cooked',cat:'grain',per100:{cal:123,protein:2.3,carbs:28,fat:0.4},units:{cup:157}},
+    {name:'Farro, cooked',cat:'grain',per100:{cal:170,protein:6,carbs:34,fat:1.5}},
+    {name:'Rice noodles, cooked',cat:'grain',per100:{cal:109,protein:0.9,carbs:25,fat:0.2}},
+    {name:'Egg noodles, cooked',cat:'grain',per100:{cal:138,protein:4.5,carbs:25,fat:2}},
+    {name:'Soba noodles, cooked',cat:'grain',per100:{cal:99,protein:5.1,carbs:21,fat:0.1}},
+    {name:'Ramen noodles, cooked',cat:'grain',per100:{cal:188,protein:5,carbs:27,fat:7}},
+    {name:'Corn tortilla',cat:'grain',per100:{cal:218,protein:5.7,carbs:44.6,fat:2.9},units:{piece:24}},
+    {name:'Naan bread',cat:'grain',per100:{cal:310,protein:9,carbs:50,fat:8},units:{piece:90}},
+    {name:'Pita bread',cat:'grain',per100:{cal:275,protein:9.1,carbs:55.7,fat:1.2},units:{piece:60}},
+    {name:'Sourdough bread',cat:'grain',per100:{cal:289,protein:11.4,carbs:56.9,fat:1.9},units:{piece:32}},
+    {name:'Rye bread',cat:'grain',per100:{cal:259,protein:8.5,carbs:48.3,fat:3.3},units:{piece:32}},
+    {name:'English muffin',cat:'grain',per100:{cal:227,protein:8.2,carbs:44.5,fat:1.6},units:{piece:57}},
+    {name:'Croissant',cat:'grain',per100:{cal:406,protein:8.2,carbs:45.8,fat:21},units:{piece:57}},
+    {name:'Waffle',cat:'grain',per100:{cal:291,protein:7.9,carbs:33,fat:14.1},units:{piece:75}},
+    {name:'Pancake',cat:'grain',per100:{cal:227,protein:6.4,carbs:28,fat:9.7},units:{piece:77}},
+    {name:'Muesli',cat:'grain',per100:{cal:362,protein:9.7,carbs:66.2,fat:6}},
+    {name:'Cream of wheat, cooked',cat:'grain',per100:{cal:59,protein:1.7,carbs:12.6,fat:0.2}},
+    {name:'Popcorn, air-popped',cat:'grain',per100:{cal:387,protein:12.9,carbs:77.9,fat:4.5},units:{cup:8}},
+    {name:'Rice cake',cat:'grain',per100:{cal:387,protein:8.2,carbs:81.7,fat:2.8},units:{piece:9}},
+    {name:'Corn, cooked',cat:'veg',per100:{cal:96,protein:3.4,carbs:21,fat:1.5},units:{piece:90}},
+    {name:'Kidney beans, cooked',cat:'legume',per100:{cal:127,protein:8.7,carbs:22.8,fat:0.5},units:{cup:177}},
+    {name:'Pinto beans, cooked',cat:'legume',per100:{cal:143,protein:9,carbs:26,fat:0.7},units:{cup:171}},
+    {name:'Refried beans',cat:'legume',per100:{cal:100,protein:5.9,carbs:16.7,fat:1.2}},
+    {name:'Split peas, cooked',cat:'legume',per100:{cal:118,protein:8.3,carbs:21,fat:0.4}},
+    {name:'Soybeans, cooked',cat:'legume',per100:{cal:173,protein:16.6,carbs:9.9,fat:9}},
+    {name:'Grapes',cat:'fruit',per100:{cal:69,protein:0.7,carbs:18,fat:0.2},units:{cup:151}},
+    {name:'Pineapple',cat:'fruit',per100:{cal:50,protein:0.5,carbs:13.1,fat:0.1},units:{cup:165}},
+    {name:'Mango',cat:'fruit',per100:{cal:60,protein:0.8,carbs:15,fat:0.4},units:{piece:200}},
+    {name:'Watermelon',cat:'fruit',per100:{cal:30,protein:0.6,carbs:7.6,fat:0.2},units:{cup:152}},
+    {name:'Peach',cat:'fruit',per100:{cal:39,protein:0.9,carbs:9.5,fat:0.3},units:{piece:150}},
+    {name:'Pear',cat:'fruit',per100:{cal:57,protein:0.4,carbs:15.2,fat:0.1},units:{piece:178}},
+    {name:'Kiwi',cat:'fruit',per100:{cal:61,protein:1.1,carbs:14.7,fat:0.5},units:{piece:69}},
+    {name:'Cherries',cat:'fruit',per100:{cal:63,protein:1.1,carbs:16,fat:0.2},units:{cup:154}},
+    {name:'Raspberries',cat:'fruit',per100:{cal:52,protein:1.2,carbs:11.9,fat:0.7},units:{cup:123}},
+    {name:'Pomegranate seeds',cat:'fruit',per100:{cal:83,protein:1.7,carbs:18.7,fat:1.2}},
+    {name:'Grapefruit',cat:'fruit',per100:{cal:42,protein:0.8,carbs:10.7,fat:0.1},units:{piece:230}},
+    {name:'Dates, dried',cat:'fruit',per100:{cal:277,protein:1.8,carbs:75,fat:0.2},units:{piece:24}},
+    {name:'Raisins',cat:'fruit',per100:{cal:299,protein:3.1,carbs:79,fat:0.5},units:{tbsp:9}},
+    {name:'Dried apricots',cat:'fruit',per100:{cal:241,protein:3.4,carbs:62.6,fat:0.5}},
+    {name:'Plantain, cooked',cat:'fruit',per100:{cal:122,protein:0.8,carbs:31.9,fat:0.3}},
+    {name:'Cauliflower, cooked',cat:'veg',per100:{cal:23,protein:1.8,carbs:4.1,fat:0.5},units:{cup:124}},
+    {name:'Zucchini, cooked',cat:'veg',per100:{cal:17,protein:1.2,carbs:3.1,fat:0.3},units:{cup:180}},
+    {name:'Green beans, cooked',cat:'veg',per100:{cal:35,protein:1.9,carbs:7.9,fat:0.2},units:{cup:125}},
+    {name:'Asparagus, cooked',cat:'veg',per100:{cal:22,protein:2.4,carbs:4.1,fat:0.2},units:{cup:180}},
+    {name:'Brussels sprouts, cooked',cat:'veg',per100:{cal:43,protein:3.4,carbs:8.9,fat:0.3},units:{cup:156}},
+    {name:'Kale, raw',cat:'veg',per100:{cal:49,protein:4.3,carbs:8.8,fat:0.9},units:{cup:67}},
+    {name:'Cabbage, raw',cat:'veg',per100:{cal:25,protein:1.3,carbs:5.8,fat:0.1},units:{cup:89}},
+    {name:'Cucumber',cat:'veg',per100:{cal:15,protein:0.7,carbs:3.6,fat:0.1},units:{piece:301}},
+    {name:'Tomato',cat:'veg',per100:{cal:18,protein:0.9,carbs:3.9,fat:0.2},units:{piece:123}},
+    {name:'Cherry tomatoes',cat:'veg',per100:{cal:18,protein:0.9,carbs:3.9,fat:0.2},units:{cup:149}},
+    {name:'Onion, raw',cat:'veg',per100:{cal:40,protein:1.1,carbs:9.3,fat:0.1},units:{piece:110}},
+    {name:'Garlic',cat:'veg',per100:{cal:149,protein:6.4,carbs:33,fat:0.5},units:{piece:3}},
+    {name:'Mushrooms, raw',cat:'veg',per100:{cal:22,protein:3.1,carbs:3.3,fat:0.3},units:{cup:70}},
+    {name:'Eggplant, cooked',cat:'veg',per100:{cal:35,protein:0.8,carbs:8.7,fat:0.2}},
+    {name:'Beets, cooked',cat:'veg',per100:{cal:44,protein:1.7,carbs:10,fat:0.2}},
+    {name:'Celery',cat:'veg',per100:{cal:16,protein:0.7,carbs:3,fat:0.2},units:{piece:40}},
+    {name:'Lettuce, romaine',cat:'veg',per100:{cal:17,protein:1.2,carbs:3.3,fat:0.3},units:{cup:47}},
+    {name:'Peas, cooked',cat:'veg',per100:{cal:84,protein:5.4,carbs:15.6,fat:0.4},units:{cup:160}},
+    {name:'Squash, butternut, cooked',cat:'veg',per100:{cal:40,protein:0.9,carbs:10.5,fat:0.1}},
+    {name:'Seaweed, dried (nori)',cat:'veg',per100:{cal:35,protein:5.8,carbs:5.1,fat:0.3}},
+    {name:'Cashews',cat:'nuts',per100:{cal:553,protein:18,carbs:30,fat:44},units:{tbsp:8}},
+    {name:'Pistachios',cat:'nuts',per100:{cal:560,protein:20,carbs:28,fat:45}},
+    {name:'Pecans',cat:'nuts',per100:{cal:691,protein:9.2,carbs:13.9,fat:72}},
+    {name:'Macadamia nuts',cat:'nuts',per100:{cal:718,protein:7.9,carbs:13.8,fat:75.8}},
+    {name:'Chia seeds',cat:'nuts',per100:{cal:486,protein:16.5,carbs:42.1,fat:30.7},units:{tbsp:12}},
+    {name:'Flaxseed, ground',cat:'nuts',per100:{cal:534,protein:18.3,carbs:28.9,fat:42.2},units:{tbsp:7}},
+    {name:'Sunflower seeds',cat:'nuts',per100:{cal:584,protein:20.8,carbs:20,fat:51.5}},
+    {name:'Pumpkin seeds',cat:'nuts',per100:{cal:559,protein:30.2,carbs:10.7,fat:49}},
+    {name:'Almond butter',cat:'nuts',per100:{cal:614,protein:21,carbs:19,fat:56},units:{tbsp:16}},
+    {name:'Tahini',cat:'nuts',per100:{cal:595,protein:17,carbs:21,fat:53.8},units:{tbsp:15}},
+    {name:'Coconut oil',cat:'fat',per100:{cal:862,protein:0,carbs:0,fat:100},units:{tbsp:13.6}},
+    {name:'Mayonnaise',cat:'fat',per100:{cal:680,protein:1,carbs:0.6,fat:75},units:{tbsp:14}},
+    {name:'Ranch dressing',cat:'fat',per100:{cal:430,protein:1,carbs:5,fat:44},units:{tbsp:15}},
+    {name:'Dark chocolate (70%)',cat:'sweet',per100:{cal:598,protein:7.8,carbs:45.9,fat:42.6}},
+    {name:'Milk chocolate',cat:'sweet',per100:{cal:535,protein:7.7,carbs:59.4,fat:29.7}},
+    {name:'Maple syrup',cat:'sweet',per100:{cal:260,protein:0,carbs:67,fat:0.1},units:{tbsp:20}},
+    {name:'Jam / preserves',cat:'sweet',per100:{cal:250,protein:0.3,carbs:65,fat:0.1},units:{tbsp:20}},
+    {name:'Nutella',cat:'sweet',per100:{cal:539,protein:6,carbs:57.5,fat:30.9},units:{tbsp:20}},
+    {name:'Potato chips',cat:'meal',per100:{cal:536,protein:7,carbs:53,fat:35}},
+    {name:'Tortilla chips',cat:'meal',per100:{cal:489,protein:6.9,carbs:63,fat:24}},
+    {name:'Pretzels',cat:'meal',per100:{cal:381,protein:9.1,carbs:80,fat:2.6}},
+    {name:'Trail mix',cat:'meal',per100:{cal:462,protein:13.8,carbs:44.9,fat:29.6}},
+    {name:'Cookie, chocolate chip',cat:'sweet',per100:{cal:488,protein:5.3,carbs:63.6,fat:23.4},units:{piece:16}},
+    {name:'Brownie',cat:'sweet',per100:{cal:405,protein:4.7,carbs:56,fat:19},units:{piece:56}},
+    {name:'Donut, glazed',cat:'sweet',per100:{cal:452,protein:4.9,carbs:51,fat:25},units:{piece:60}},
+    {name:'Muffin, blueberry',cat:'sweet',per100:{cal:377,protein:5.7,carbs:56.4,fat:15},units:{piece:113}},
+    {name:'Cake, chocolate with frosting',cat:'sweet',per100:{cal:367,protein:4.1,carbs:54.5,fat:15.6}},
+    {name:'Ice cream sandwich',cat:'sweet',per100:{cal:237,protein:4,carbs:34,fat:9},units:{piece:70}},
+    {name:'Cheeseburger, fast food',cat:'meal',per100:{cal:280,protein:15,carbs:24,fat:14},units:{piece:120}},
+    {name:'Chicken nuggets',cat:'meal',per100:{cal:296,protein:15.5,carbs:15.8,fat:19.5},units:{piece:16}},
+    {name:'Chicken tenders/strips',cat:'meal',per100:{cal:265,protein:16,carbs:14,fat:16}},
+    {name:'Burrito, chicken and rice',cat:'meal',per100:{cal:200,protein:9.5,carbs:24,fat:7}},
+    {name:'Taco, beef, hard shell',cat:'meal',per100:{cal:226,protein:11.6,carbs:15,fat:13.5},units:{piece:78}},
+    {name:'Quesadilla, cheese',cat:'meal',per100:{cal:290,protein:13,carbs:23,fat:16}},
+    {name:'Sushi roll, California',cat:'meal',per100:{cal:145,protein:5.8,carbs:23,fat:3.5},units:{piece:28}},
+    {name:'Sushi, salmon nigiri',cat:'meal',per100:{cal:150,protein:8,carbs:20,fat:3.8},units:{piece:30}},
+    {name:'Pad Thai',cat:'meal',per100:{cal:180,protein:6.5,carbs:23,fat:6.5}},
+    {name:'Fried rice',cat:'meal',per100:{cal:163,protein:4.5,carbs:24,fat:5.4}},
+    {name:"General Tso's chicken",cat:'meal',per100:{cal:220,protein:12,carbs:18,fat:11}},
+    {name:'Chicken curry with rice',cat:'meal',per100:{cal:150,protein:8,carbs:16,fat:6}},
+    {name:'Butter chicken',cat:'meal',per100:{cal:180,protein:12,carbs:6,fat:12}},
+    {name:'Falafel',cat:'meal',per100:{cal:333,protein:13.3,carbs:31.8,fat:17.8},units:{piece:17}},
+    {name:'Gyro with pita',cat:'meal',per100:{cal:220,protein:12,carbs:18,fat:11}},
+    {name:'Pho, beef noodle soup',cat:'meal',per100:{cal:80,protein:5.5,carbs:11,fat:1.5}},
+    {name:'Ramen, pork broth',cat:'meal',per100:{cal:120,protein:6,carbs:15,fat:4}},
+    {name:'Lasagna',cat:'meal',per100:{cal:135,protein:8.6,carbs:11,fat:6.5}},
+    {name:'Spaghetti with meat sauce',cat:'meal',per100:{cal:130,protein:6.5,carbs:16,fat:4.5}},
+    {name:'Mac and cheese',cat:'meal',per100:{cal:164,protein:6.4,carbs:20,fat:6.5},units:{cup:200}},
+    {name:'Chili con carne',cat:'meal',per100:{cal:120,protein:9,carbs:10,fat:5}},
+    {name:'Caesar salad with chicken',cat:'meal',per100:{cal:120,protein:9,carbs:4,fat:8}},
+    {name:'Cobb salad',cat:'meal',per100:{cal:110,protein:8,carbs:3.5,fat:7.5}},
+    {name:'Poke bowl, salmon',cat:'meal',per100:{cal:130,protein:9,carbs:14,fat:4.5}},
+    {name:'Shawarma wrap',cat:'meal',per100:{cal:210,protein:12,carbs:19,fat:9.5}},
+    {name:'Pizza, pepperoni slice',cat:'meal',per100:{cal:298,protein:12.6,carbs:33.8,fat:12.9},units:{piece:120}},
+    {name:'Fried chicken, breaded',cat:'meal',per100:{cal:290,protein:20,carbs:11,fat:19}},
+    {name:'Fish and chips',cat:'meal',per100:{cal:230,protein:9,carbs:22,fat:12}},
+    {name:'Onion rings',cat:'meal',per100:{cal:280,protein:3.5,carbs:32,fat:15.5}},
+    {name:'Hot dog with bun',cat:'meal',per100:{cal:250,protein:10.4,carbs:20,fat:14.5},units:{piece:98}},
+    {name:'Grilled cheese sandwich',cat:'meal',per100:{cal:290,protein:11,carbs:26,fat:16},units:{piece:110}},
+    {name:'BLT sandwich',cat:'meal',per100:{cal:230,protein:9,carbs:20,fat:13}},
+    {name:'Turkey sandwich',cat:'meal',per100:{cal:180,protein:12,carbs:22,fat:5}},
+    {name:'PB&J sandwich',cat:'meal',per100:{cal:290,protein:9,carbs:38,fat:12}},
+    {name:'Chicken Caesar wrap',cat:'meal',per100:{cal:200,protein:11,carbs:17,fat:10}},
+    {name:'Miso soup',cat:'meal',per100:{cal:20,protein:1.9,carbs:2.5,fat:0.6}},
+    {name:'Minestrone soup',cat:'meal',per100:{cal:44,protein:2.2,carbs:8.1,fat:0.7}},
+    {name:'Chicken noodle soup',cat:'meal',per100:{cal:38,protein:2.9,carbs:4.5,fat:1}},
+    {name:'Guacamole',cat:'meal',per100:{cal:157,protein:2,carbs:8.5,fat:14.7},units:{tbsp:15}},
+    {name:'Salsa',cat:'meal',per100:{cal:36,protein:1.6,carbs:7.5,fat:0.2},units:{tbsp:16}},
+    {name:'Ketchup',cat:'sweet',per100:{cal:101,protein:1.2,carbs:25.8,fat:0.1},units:{tbsp:17}},
+    {name:'Mustard',cat:'fat',per100:{cal:66,protein:4.4,carbs:5.8,fat:3.3},units:{tbsp:15}},
+    {name:'Soy sauce',cat:'drink',per100:{cal:53,protein:8.1,carbs:4.9,fat:0.6},units:{tbsp:16}},
+    {name:'Orange juice',cat:'drink',per100:{cal:45,protein:0.7,carbs:10.4,fat:0.2},units:{cup:248}},
+    {name:'Apple juice',cat:'drink',per100:{cal:46,protein:0.1,carbs:11.3,fat:0.1},units:{cup:248}},
+    {name:'Soda, cola',cat:'drink',per100:{cal:42,protein:0,carbs:10.6,fat:0},units:{cup:355}},
+    {name:'Diet soda',cat:'drink',per100:{cal:0.4,protein:0,carbs:0.1,fat:0},units:{cup:355}},
+    {name:'Sports drink (Gatorade-style)',cat:'drink',per100:{cal:25,protein:0,carbs:6,fat:0},units:{cup:240}},
+    {name:'Energy drink',cat:'drink',per100:{cal:45,protein:0.5,carbs:11,fat:0},units:{cup:250}},
+    {name:'Beer, regular',cat:'drink',per100:{cal:43,protein:0.5,carbs:3.6,fat:0},units:{cup:355}},
+    {name:'Beer, light',cat:'drink',per100:{cal:29,protein:0.2,carbs:1.6,fat:0},units:{cup:355}},
+    {name:'Wine, red',cat:'drink',per100:{cal:85,protein:0.1,carbs:2.6,fat:0},units:{cup:148}},
+    {name:'Wine, white',cat:'drink',per100:{cal:82,protein:0.1,carbs:2.6,fat:0},units:{cup:148}},
+    {name:'Vodka / spirits, 40%',cat:'drink',per100:{cal:231,protein:0,carbs:0,fat:0},units:{piece:44}},
+    {name:'Margarita, classic',cat:'drink',per100:{cal:170,protein:0,carbs:15,fat:0}},
+    {name:'Smoothie, fruit',cat:'drink',per100:{cal:63,protein:1,carbs:15,fat:0.3},units:{cup:250}},
+    {name:'Bubble tea, milk tea with tapioca',cat:'drink',per100:{cal:80,protein:0.6,carbs:19,fat:0.8},units:{cup:473}},
+    {name:'Kombucha',cat:'drink',per100:{cal:19,protein:0,carbs:4.7,fat:0},units:{cup:240}},
+    {name:'Lobster, cooked',cat:'protein',per100:{cal:89,protein:19,carbs:0,fat:0.9}},
+    {name:'Clams, cooked',cat:'protein',per100:{cal:148,protein:25.5,carbs:5.1,fat:1.9}},
+    {name:'Anchovies, canned',cat:'protein',per100:{cal:210,protein:29,carbs:0,fat:9.7}},
+    {name:'Venison, cooked',cat:'protein',per100:{cal:158,protein:30,carbs:0,fat:3.2}},
+    {name:'Bison, cooked',cat:'protein',per100:{cal:143,protein:28.4,carbs:0,fat:2.4}},
+    {name:'Elk, cooked',cat:'protein',per100:{cal:146,protein:30.2,carbs:0,fat:1.9}},
+    {name:'Liver, beef, cooked',cat:'protein',per100:{cal:175,protein:26.5,carbs:3.9,fat:4.9}},
+    {name:'Quorn (meat substitute)',cat:'protein',per100:{cal:96,protein:12,carbs:5.5,fat:2.9}},
+    {name:'Beyond/Impossible-style plant patty',cat:'protein',per100:{cal:250,protein:20,carbs:6,fat:17},units:{piece:113}},
+    {name:'Collagen peptides powder',cat:'protein',per100:{cal:370,protein:90,carbs:0,fat:0},units:{tbsp:11}},
+    {name:'Buttermilk',cat:'dairy',per100:{cal:40,protein:3.3,carbs:4.8,fat:0.9},units:{cup:245}},
+    {name:'Half and half',cat:'dairy',per100:{cal:130,protein:3,carbs:4.3,fat:11.5},units:{tbsp:15}},
+    {name:'Ricotta cheese, part-skim',cat:'dairy',per100:{cal:138,protein:11.4,carbs:5.1,fat:7.9}},
+    {name:'Blue cheese',cat:'dairy',per100:{cal:353,protein:21.4,carbs:2.3,fat:28.7}},
+    {name:'Provolone cheese',cat:'dairy',per100:{cal:351,protein:25.6,carbs:2.1,fat:26.6}},
+    {name:'Gouda cheese',cat:'dairy',per100:{cal:356,protein:24.9,carbs:2.2,fat:27.4}},
+    {name:'Kefir, plain',cat:'dairy',per100:{cal:41,protein:3.8,carbs:4.5,fat:0.9},units:{cup:243}},
+    {name:'Frozen yogurt',cat:'dairy',per100:{cal:159,protein:4.4,carbs:24,fat:6},units:{cup:174}},
+    {name:'Coconut milk, canned',cat:'dairy',per100:{cal:230,protein:2.3,carbs:5.5,fat:24},units:{cup:226}},
+    {name:'Whipped cream',cat:'dairy',per100:{cal:257,protein:2.1,carbs:6.4,fat:26},units:{tbsp:7.5}},
+    {name:'Millet, cooked',cat:'grain',per100:{cal:119,protein:3.5,carbs:23.7,fat:1},units:{cup:174}},
+    {name:'Buckwheat, cooked',cat:'grain',per100:{cal:92,protein:3.4,carbs:19.9,fat:0.6},units:{cup:168}},
+    {name:'Polenta, cooked',cat:'grain',per100:{cal:70,protein:1.6,carbs:15,fat:0.4}},
+    {name:'Grits, cooked',cat:'grain',per100:{cal:59,protein:1.4,carbs:12.9,fat:0.2},units:{cup:242}},
+    {name:'Wheat tortilla wrap, large',cat:'grain',per100:{cal:290,protein:8,carbs:49,fat:6.5},units:{piece:64}},
+    {name:'Breadcrumbs',cat:'grain',per100:{cal:395,protein:13,carbs:72,fat:5.3}},
+    {name:'Crackers, saltine',cat:'grain',per100:{cal:421,protein:9.5,carbs:74,fat:10.6}},
+    {name:'Graham crackers',cat:'grain',per100:{cal:421,protein:7.5,carbs:78,fat:10.6}},
+    {name:'Cinnamon roll',cat:'sweet',per100:{cal:374,protein:5.7,carbs:52.5,fat:15.8},units:{piece:87}},
+    {name:'Scone',cat:'grain',per100:{cal:374,protein:7.2,carbs:52,fat:15},units:{piece:96}},
+    {name:'Navy beans, cooked',cat:'legume',per100:{cal:140,protein:8.2,carbs:26.1,fat:0.6},units:{cup:182}},
+    {name:'Great northern beans, cooked',cat:'legume',per100:{cal:118,protein:8.3,carbs:21.1,fat:0.4},units:{cup:177}},
+    {name:'Lima beans, cooked',cat:'legume',per100:{cal:115,protein:7.8,carbs:20.9,fat:0.4},units:{cup:188}},
+    {name:'Fava beans, cooked',cat:'legume',per100:{cal:110,protein:7.6,carbs:19.7,fat:0.4}},
+    {name:'Miso paste',cat:'legume',per100:{cal:199,protein:11.7,carbs:26.5,fat:6},units:{tbsp:17}},
+    {name:'Natto',cat:'legume',per100:{cal:212,protein:17.7,carbs:14.4,fat:11}},
+    {name:'Papaya',cat:'fruit',per100:{cal:43,protein:0.5,carbs:10.8,fat:0.3},units:{piece:157}},
+    {name:'Guava',cat:'fruit',per100:{cal:68,protein:2.6,carbs:14.3,fat:1},units:{piece:55}},
+    {name:'Lychee',cat:'fruit',per100:{cal:66,protein:0.8,carbs:16.5,fat:0.4}},
+    {name:'Passion fruit',cat:'fruit',per100:{cal:97,protein:2.2,carbs:23.4,fat:0.7},units:{piece:18}},
+    {name:'Fig, fresh',cat:'fruit',per100:{cal:74,protein:0.8,carbs:19.2,fat:0.3},units:{piece:50}},
+    {name:'Fig, dried',cat:'fruit',per100:{cal:249,protein:3.3,carbs:63.9,fat:0.9},units:{piece:8}},
+    {name:'Cranberries, fresh',cat:'fruit',per100:{cal:46,protein:0.4,carbs:12.2,fat:0.1},units:{cup:100}},
+    {name:'Dried cranberries (sweetened)',cat:'fruit',per100:{cal:308,protein:0.1,carbs:82.4,fat:1.1}},
+    {name:'Blackberries',cat:'fruit',per100:{cal:43,protein:1.4,carbs:9.6,fat:0.5},units:{cup:144}},
+    {name:'Coconut meat, raw',cat:'fruit',per100:{cal:354,protein:3.3,carbs:15.2,fat:33.5}},
+    {name:'Artichoke, cooked',cat:'veg',per100:{cal:47,protein:3.3,carbs:10.5,fat:0.2},units:{piece:120}},
+    {name:'Okra, cooked',cat:'veg',per100:{cal:33,protein:1.9,carbs:7.5,fat:0.2},units:{cup:160}},
+    {name:'Radish',cat:'veg',per100:{cal:16,protein:0.7,carbs:3.4,fat:0.1},units:{piece:4.5}},
+    {name:'Turnip, cooked',cat:'veg',per100:{cal:26,protein:0.9,carbs:6,fat:0.1}},
+    {name:'Parsnip, cooked',cat:'veg',per100:{cal:71,protein:1.3,carbs:17.1,fat:0.3}},
+    {name:'Leek, cooked',cat:'veg',per100:{cal:31,protein:0.8,carbs:7.3,fat:0.2}},
+    {name:'Fennel, raw',cat:'veg',per100:{cal:31,protein:1.2,carbs:7.3,fat:0.2}},
+    {name:'Bok choy, cooked',cat:'veg',per100:{cal:12,protein:1.6,carbs:1.8,fat:0.2},units:{cup:70}},
+    {name:'Swiss chard, cooked',cat:'veg',per100:{cal:20,protein:1.9,carbs:4.1,fat:0.1},units:{cup:175}},
+    {name:'Arugula, raw',cat:'veg',per100:{cal:25,protein:2.6,carbs:3.7,fat:0.7},units:{cup:20}},
+    {name:'Iceberg lettuce',cat:'veg',per100:{cal:14,protein:0.9,carbs:3,fat:0.1},units:{cup:72}},
+    {name:'Snap peas',cat:'veg',per100:{cal:42,protein:2.8,carbs:7.6,fat:0.2},units:{cup:98}},
+    {name:'Jicama, raw',cat:'veg',per100:{cal:38,protein:0.7,carbs:8.8,fat:0.1}},
+    {name:'Hazelnuts',cat:'nuts',per100:{cal:628,protein:15,carbs:16.7,fat:60.8}},
+    {name:'Brazil nuts',cat:'nuts',per100:{cal:659,protein:14.3,carbs:11.7,fat:67.1}},
+    {name:'Pine nuts',cat:'nuts',per100:{cal:673,protein:13.7,carbs:13.1,fat:68.4}},
+    {name:'Hemp seeds',cat:'nuts',per100:{cal:553,protein:31.6,carbs:8.7,fat:48.8},units:{tbsp:10}},
+    {name:'Sesame seeds',cat:'nuts',per100:{cal:573,protein:17.7,carbs:23.4,fat:49.7},units:{tbsp:9}},
+    {name:'Cashew butter',cat:'nuts',per100:{cal:587,protein:17.6,carbs:27.6,fat:49.4},units:{tbsp:16}},
+    {name:'Sunflower seed butter',cat:'nuts',per100:{cal:617,protein:19.3,carbs:23.2,fat:55.2},units:{tbsp:16}},
+    {name:'Avocado oil',cat:'fat',per100:{cal:884,protein:0,carbs:0,fat:100},units:{tbsp:13.5}},
+    {name:'Sesame oil',cat:'fat',per100:{cal:884,protein:0,carbs:0,fat:100},units:{tbsp:13.5}},
+    {name:'Vegetable oil',cat:'fat',per100:{cal:884,protein:0,carbs:0,fat:100},units:{tbsp:13.5}},
+    {name:'Lard',cat:'fat',per100:{cal:902,protein:0,carbs:0,fat:100},units:{tbsp:12.8}},
+    {name:'Ghee',cat:'fat',per100:{cal:876,protein:0.3,carbs:0,fat:99.5},units:{tbsp:12.8}},
+    {name:'Margarine',cat:'fat',per100:{cal:717,protein:0.2,carbs:0.9,fat:80.5},units:{tbsp:14}},
+    {name:'Italian dressing',cat:'fat',per100:{cal:250,protein:0,carbs:6.5,fat:24},units:{tbsp:15}},
+    {name:'Blue cheese dressing',cat:'fat',per100:{cal:463,protein:2.5,carbs:4.5,fat:48.5},units:{tbsp:15}},
+    {name:'Thousand island dressing',cat:'fat',per100:{cal:377,protein:0.7,carbs:15.7,fat:35.5},units:{tbsp:15}},
+    {name:'Balsamic vinaigrette',cat:'fat',per100:{cal:230,protein:0.5,carbs:12,fat:19},units:{tbsp:15}},
+    {name:'Molasses',cat:'sweet',per100:{cal:290,protein:0,carbs:75,fat:0.1},units:{tbsp:20}},
+    {name:'Agave nectar',cat:'sweet',per100:{cal:310,protein:0,carbs:76,fat:0.5},units:{tbsp:21}},
+    {name:'Marshmallows',cat:'sweet',per100:{cal:318,protein:1.8,carbs:81.3,fat:0.2}},
+    {name:'Gummy candy',cat:'sweet',per100:{cal:325,protein:6.9,carbs:77,fat:0}},
+    {name:'Sherbet',cat:'sweet',per100:{cal:144,protein:1.1,carbs:30.4,fat:2},units:{cup:193}},
+    {name:'Pie, apple',cat:'sweet',per100:{cal:237,protein:2,carbs:34,fat:11},units:{piece:117}},
+    {name:'Cheesecake',cat:'sweet',per100:{cal:321,protein:5.5,carbs:25.5,fat:22.5},units:{piece:125}},
+    {name:'Vanilla wafer cookies',cat:'sweet',per100:{cal:462,protein:5.3,carbs:74.6,fat:16.1}},
+    {name:'Beef jerky',cat:'protein',per100:{cal:410,protein:33,carbs:11,fat:26}},
+    {name:'Pepperoni',cat:'protein',per100:{cal:494,protein:22.6,carbs:2.5,fat:44}},
+    {name:'Salami',cat:'protein',per100:{cal:336,protein:19.3,carbs:2.6,fat:26.1}},
+    {name:'Deli turkey slices',cat:'protein',per100:{cal:104,protein:17.1,carbs:2.6,fat:2.6}},
+    {name:'Chorizo, cooked',cat:'protein',per100:{cal:455,protein:24.1,carbs:1.9,fat:38.3}},
+    {name:'Meatballs, beef',cat:'meal',per100:{cal:230,protein:14,carbs:8,fat:16}},
+    {name:'Chicken parmesan',cat:'meal',per100:{cal:220,protein:16,carbs:12,fat:12}},
+    {name:'Beef stir fry with vegetables',cat:'meal',per100:{cal:140,protein:11,carbs:8,fat:7}},
+    {name:'Chicken fajitas',cat:'meal',per100:{cal:160,protein:13,carbs:11,fat:7}},
+    {name:'Enchiladas, chicken',cat:'meal',per100:{cal:195,protein:10,carbs:17,fat:10}},
+    {name:'Tamales',cat:'meal',per100:{cal:187,protein:5,carbs:20,fat:9.5}},
+    {name:'Empanada, beef',cat:'meal',per100:{cal:290,protein:9,carbs:28,fat:16},units:{piece:120}},
+    {name:'Dumplings, pork (steamed)',cat:'meal',per100:{cal:220,protein:9,carbs:25,fat:9},units:{piece:20}},
+    {name:'Spring roll, fried',cat:'meal',per100:{cal:230,protein:5,carbs:25,fat:12},units:{piece:35}},
+    {name:'Bibimbap',cat:'meal',per100:{cal:135,protein:6,carbs:18,fat:4.5}},
+    {name:'Bulgogi, beef',cat:'meal',per100:{cal:180,protein:18,carbs:8,fat:8.5}},
+    {name:'Tom yum soup',cat:'meal',per100:{cal:35,protein:2.5,carbs:4,fat:1}},
+    {name:'Green curry with chicken',cat:'meal',per100:{cal:145,protein:9,carbs:6,fat:10}},
+    {name:'Shepherd\u2019s pie',cat:'meal',per100:{cal:145,protein:7,carbs:14,fat:7}},
+    {name:'Beef stew',cat:'meal',per100:{cal:110,protein:9,carbs:8,fat:4.5}},
+    {name:'Clam chowder',cat:'meal',per100:{cal:95,protein:4.5,carbs:9,fat:4.5}},
+    {name:'Tomato soup',cat:'meal',per100:{cal:50,protein:1.3,carbs:9.5,fat:1.2}},
+    {name:'French onion soup',cat:'meal',per100:{cal:60,protein:3,carbs:6,fat:2.5}},
+    {name:'Ceviche',cat:'meal',per100:{cal:90,protein:16,carbs:4,fat:1}},
+    {name:'Paella',cat:'meal',per100:{cal:158,protein:8.5,carbs:20,fat:5}},
+    {name:'Risotto',cat:'meal',per100:{cal:166,protein:4.2,carbs:24,fat:5.8}},
+    {name:'Gnocchi',cat:'meal',per100:{cal:150,protein:3.5,carbs:31,fat:0.8}},
+    {name:'Ravioli, cheese',cat:'meal',per100:{cal:220,protein:9,carbs:32,fat:6}},
+    {name:'Chicken pot pie',cat:'meal',per100:{cal:210,protein:7.5,carbs:19,fat:12}},
+    {name:'Milkshake, chocolate',cat:'drink',per100:{cal:112,protein:3,carbs:19,fat:2.8},units:{cup:250}},
+    {name:'Iced tea, sweetened',cat:'drink',per100:{cal:31,protein:0,carbs:8,fat:0},units:{cup:240}},
+    {name:'Iced tea, unsweetened',cat:'drink',per100:{cal:1,protein:0,carbs:0.3,fat:0},units:{cup:240}},
+    {name:'Hot chocolate',cat:'drink',per100:{cal:77,protein:3.1,carbs:12.5,fat:2.3},units:{cup:250}},
+    {name:'Coconut water',cat:'drink',per100:{cal:19,protein:0.7,carbs:3.7,fat:0.2},units:{cup:240}},
+    {name:'Tonic water',cat:'drink',per100:{cal:34,protein:0,carbs:9,fat:0},units:{cup:240}},
+    {name:'Champagne / sparkling wine',cat:'drink',per100:{cal:82,protein:0.1,carbs:1.5,fat:0},units:{cup:148}},
+    {name:'Whiskey, 40%',cat:'drink',per100:{cal:250,protein:0,carbs:0,fat:0},units:{piece:44}},
+    {name:'Rum, 40%',cat:'drink',per100:{cal:231,protein:0,carbs:0,fat:0},units:{piece:44}},
+    {name:'Tequila, 40%',cat:'drink',per100:{cal:231,protein:0,carbs:0,fat:0},units:{piece:44}},
+    {name:'Water',cat:'drink',per100:{cal:0,protein:0,carbs:0,fat:0},units:{cup:240}}
+  ],
+  search(query, limit){
+    limit=limit||8;
+    const q=(query||'').trim().toLowerCase();
+    if(!q) return [];
+    const starts=[], contains=[];
+    FoodDB.items.forEach(f=>{
+      const n=f.name.toLowerCase();
+      if(n.startsWith(q)) starts.push(f);
+      else if(n.includes(q)) contains.push(f);
+    });
+    return starts.concat(contains).slice(0,limit);
+  },
+  findByName(name){
+    const q=(name||'').trim().toLowerCase();
+    if(!q) return null;
+    return FoodDB.items.find(f=>f.name.toLowerCase()===q)
+      || FoodDB.items.find(f=>f.name.toLowerCase().includes(q))
+      || null;
+  },
+  gramsFor(food, quantity, unit){
+    quantity=Utils.num(quantity,1); unit=(unit||'g').toLowerCase();
+    const u=food.units||{};
+    if(unit==='g'||unit==='gram'||unit==='grams') return quantity;
+    if(unit==='ml'||unit==='milliliter'||unit==='milliliters'||unit==='millilitre'||unit==='millilitres') return quantity; // OFF reports macros per 100 of whatever unit the product uses (g or ml) — 1:1 numerically
+    if(unit==='kg') return quantity*1000;
+    if(unit==='oz'||unit==='ounce'||unit==='ounces') return quantity*28.3495;
+    if(unit==='lb'||unit==='pound'||unit==='pounds') return quantity*453.592;
+    if(unit==='cup'||unit==='cups') return quantity*(u.cup||240);
+    if(unit==='tbsp'||unit==='tablespoon'||unit==='tablespoons') return quantity*(u.tbsp||15);
+    if(unit==='tsp'||unit==='teaspoon'||unit==='teaspoons') return quantity*(u.tsp||5);
+    if(unit==='piece'||unit==='pieces'||unit==='slice'||unit==='slices') return quantity*(u.piece||100);
+    if(unit==='serving'||unit==='servings'||unit==='container'||unit==='bowl') return quantity*(u.serving||100);
+    return quantity*100;
+  },
+  macrosFor(food, quantity, unit){
+    const grams=FoodDB.gramsFor(food,quantity,unit);
+    const factor=grams/100;
+    return {
+      calories:Utils.roundInt(food.per100.cal*factor), protein:Utils.round(food.per100.protein*factor),
+      carbs:Utils.round(food.per100.carbs*factor), fat:Utils.round(food.per100.fat*factor), grams:Utils.round(grams,0)
+    };
+  }
+};
+
+/* =========================================================
+   OPEN FOOD FACTS — free, keyless food database (millions of
+   products). Used as a fallback/extension to the curated
+   FoodDB above: local list first (instant, offline), then
+   Open Food Facts for anything not in the curated list, plus
+   barcode lookup. Every product is normalized into the same
+   {name, per100:{cal,protein,carbs,fat}} shape FoodDB uses,
+   so FoodDB.gramsFor/macrosFor work on it unchanged.
+   ========================================================= */
+const OFF = (function(){
+  const BASE='https://world.openfoodfacts.org';
+  const FIELDS='code,product_name,product_name_fr,generic_name,brands,quantity,nutriments,serving_size,serving_quantity,serving_quantity_unit,product_quantity_unit';
+
+  function mapProduct(p){
+    if(!p) return null;
+    const n=p.nutriments||{};
+    const cal=n['energy-kcal_100g'];
+    if(cal==null || isNaN(Utils.num(cal))) return null; // unusable without calories
+    const baseName=(p.product_name_fr||p.product_name||p.generic_name||'').trim();
+    if(!baseName) return null;
+    const name = p.brands ? `${baseName} (${p.brands.split(',')[0].trim()})` : baseName;
+    // OFF reports macros per "100" of whatever unit the product uses (g for solids,
+    // ml for liquids — it does not distinguish the two numerically). We mirror that:
+    // isLiquid just changes which unit label we show (ml vs g), the math is identical.
+    const isLiquid = p.serving_quantity_unit==='ml' || p.product_quantity_unit==='ml';
+    const servingQty = p.serving_quantity!=null ? Utils.num(p.serving_quantity) : null;
+    const units={};
+    if(servingQty && servingQty>0) units.serving=servingQty;
+    return {
+      name,
+      per100:{
+        cal:Utils.num(cal),
+        protein:Utils.num(n['proteins_100g']),
+        carbs:Utils.num(n['carbohydrates_100g']),
+        fat:Utils.num(n['fat_100g'])
+      },
+      units,
+      isLiquid,
+      servingLabel: p.serving_size ? p.serving_size.trim() : null,
+      code:p.code||'',
+      source:'web',
+      sourceLabel:'Open Food Facts'
+    };
+  }
+
+  function extractProducts(data){
+    const seen=new Set(); const out=[];
+    (data.products||[]).forEach(p=>{
+      const mapped=mapProduct(p);
+      if(mapped && !seen.has(mapped.name)){ seen.add(mapped.name); out.push(mapped); }
+    });
+    return out;
+  }
+
+  async function searchByName(query, pageSize){
+    pageSize=pageSize||15;
+    // The legacy CGI search endpoint is used as the primary path — in practice
+    // it has proven more reliable/CORS-friendly from the browser than /api/v2/search.
+    // /api/v2/search is kept as a fallback in case that ever flips.
+    try{
+      const url=`${BASE}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${pageSize}`;
+      const res=await fetch(url);
+      if(!res.ok) throw new Error('off-search-http-'+res.status);
+      return extractProducts(await res.json());
+    }catch(primaryErr){
+      const url=`${BASE}/api/v2/search?search_terms=${encodeURIComponent(query)}&page_size=${pageSize}&fields=${FIELDS}`;
+      const res=await fetch(url);
+      if(!res.ok) throw new Error('off-search-http-'+res.status);
+      return extractProducts(await res.json());
+    }
+  }
+
+  async function lookupBarcode(code){
+    const clean=(code||'').replace(/\D/g,'');
+    if(!clean) return null;
+    const res=await fetch(`${BASE}/api/v0/product/${encodeURIComponent(clean)}.json`);
+    if(!res.ok) throw new Error('off-barcode-http-'+res.status);
+    const data=await res.json();
+    if(data.status!==1 || !data.product) return null;
+    return mapProduct(data.product);
+  }
+
+  return { searchByName, lookupBarcode };
+})();
+
+/* =========================================================
+   WGER — free, keyless exercise database (~900+ exercises with
+   muscles/equipment/category). The API has no working full-text
+   search endpoint, so we sync the whole library once (cached
+   locally) and search it client-side, same pattern as FoodDB.
+   ========================================================= */
+const ExerciseDB = (function(){
+  const BASE='https://wger.de/api/v2';
+  const CACHE_KEY='wger_exercise_cache';
+  const PAGE_SIZE=100;
+  const PREFERRED_LANGS=[12,2]; // French, then English
+  let cache=null; // {syncedAt, items:[...]}
+
+  function pickTranslation(translations){
+    for(const lang of PREFERRED_LANGS){
+      const t=(translations||[]).find(t=>t.language===lang && t.name);
+      if(t) return t;
+    }
+    return (translations||[]).find(t=>t.name) || null;
+  }
+
+  function mapExercise(raw){
+    const t=pickTranslation(raw.translations);
+    if(!t) return null;
+    return {
+      id:raw.id,
+      name:t.name,
+      category:(raw.category && raw.category.name) || '',
+      muscles:(raw.muscles||[]).map(m=>m.name_en||m.name),
+      musclesSecondary:(raw.muscles_secondary||[]).map(m=>m.name_en||m.name),
+      equipment:(raw.equipment||[]).map(e=>e.name),
+      imageUrl:(raw.images && raw.images[0] && raw.images[0].image) || null
+    };
+  }
+
+  async function loadCache(){
+    if(cache) return cache;
+    cache=await Store.get(CACHE_KEY, null);
+    return cache;
+  }
+
+  async function sync(onProgress){
+    let offset=0, all=[];
+    for(;;){
+      const res=await fetch(`${BASE}/exerciseinfo/?limit=${PAGE_SIZE}&offset=${offset}&format=json`);
+      if(!res.ok) throw new Error('wger-http-'+res.status);
+      const data=await res.json();
+      const mapped=(data.results||[]).map(mapExercise).filter(Boolean);
+      all=all.concat(mapped);
+      if(onProgress) onProgress(all.length, data.count||all.length);
+      if(!data.next) break;
+      offset+=PAGE_SIZE;
+      await new Promise(r=>setTimeout(r,120)); // be gentle with the free public API
+    }
+    cache={ syncedAt:Date.now(), items:all };
+    await Store.set(CACHE_KEY, cache);
+    return cache;
+  }
+
+  async function status(){
+    const c=await loadCache();
+    return { synced: !!(c && c.items && c.items.length), count: c ? c.items.length : 0, syncedAt: c ? c.syncedAt : null };
+  }
+
+  function search(query, limit){
+    limit=limit||8;
+    const q=(query||'').trim().toLowerCase();
+    if(!q || !cache || !cache.items) return [];
+    const starts=[], contains=[];
+    cache.items.forEach(ex=>{
+      const n=ex.name.toLowerCase();
+      if(n.startsWith(q)) starts.push(ex);
+      else if(n.includes(q)) contains.push(ex);
+    });
+    return starts.concat(contains).slice(0,limit);
+  }
+
+  return { loadCache, sync, status, search };
+})();
+
+/* =========================================================
+   BARCODE SCANNER — free, camera-based barcode reading via the
+   open-source html5-qrcode library (loaded from a CDN, no key/
+   account needed). Rendered as an overlay appended directly to
+   <body> — deliberately OUTSIDE the #app tree that render()
+   replaces wholesale — so a re-render elsewhere in the app can
+   never orphan a live camera stream while the scanner is open.
+   Requires a secure context (https:// or localhost); it will
+   not work when the file is opened directly as file:// in most
+   browsers — that's a browser security rule, not a bug here.
+   ========================================================= */
+const BarcodeScanner = (function(){
+  let instance=null;
+  let overlayEl=null;
+
+  function buildOverlay(){
+    const el=document.createElement('div');
+    el.className='scanner-overlay';
+    el.innerHTML=`
+      <div class="scanner-box">
+        <h3>Scan a barcode</h3>
+        <div class="scanner-video-region" id="scanner-video-region"></div>
+        <div class="scanner-hint">Point your camera at the product's barcode.</div>
+        <div class="scanner-error" id="scanner-error" hidden></div>
+        <button type="button" class="btn secondary scanner-close" id="scanner-cancel">Cancel</button>
+      </div>`;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function showError(msg){
+    if(!overlayEl) return;
+    const el=overlayEl.querySelector('#scanner-error');
+    if(el){ el.textContent=msg; el.hidden=false; }
+  }
+
+  async function open(onDetected){
+    if(overlayEl) return; // already open
+    if(typeof Html5Qrcode==='undefined'){
+      showToast("Scanner library failed to load — check your internet connection.");
+      return;
+    }
+    overlayEl=buildOverlay();
+    document.getElementById('scanner-cancel').addEventListener('click', close);
+    try{
+      instance=new Html5Qrcode('scanner-video-region');
+      await instance.start(
+        { facingMode:'environment' },
+        { fps:10, qrbox:{ width:250, height:150 } },
+        async (decodedText)=>{
+          const code=decodedText;
+          await close();
+          onDetected(code);
+        },
+        ()=>{ /* no barcode in this frame — expected on most frames, ignore */ }
+      );
+    }catch(err){
+      console.error('Barcode scanner error', err);
+      showError("Couldn't access the camera. Make sure this page is loaded over https:// (or localhost) and camera access is allowed, or enter the barcode manually below.");
+    }
+  }
+
+  async function close(){
+    if(instance){
+      try{ await instance.stop(); }catch(e){}
+      try{ instance.clear(); }catch(e){}
+      instance=null;
+    }
+    if(overlayEl){ overlayEl.remove(); overlayEl=null; }
+  }
+
+  return { open, close };
+})();
+
+/* =========================================================
+   APP STATE
+   ========================================================= */
+const State = {
+  profile:null,
+  currentDate:new Date(),
+  activeTab:'today',
+  addPanel:{ open:false, meal:null, mode:'search', query:'', selected:null, pickedFood:null, qty:'1', unit:'serving',
+             manual:{name:'',calories:'',protein:'',carbs:'',fat:''},
+             webStatus:'idle', webResults:[], webQueriedFor:null, barcode:'', barcodeStatus:'idle' },
+  workoutInput:{ exerciseName:'', category:'strength', suggestions:[] },
+  exerciseSync:{ status:'idle', count:0, syncedAt:null }, // idle|syncing|done|error
+  setInputs:{}, // exId -> {reps,weight,weightUnit}
+  chat:{ messages:[], sending:false },
+  settings:{ geminiApiKey:'' },
+  progressDraft:{ weightKg:'', bodyFatPct:'' }
+};
+
+function showToast(msg){
+  const existing=document.querySelector('.toast');
+  if(existing) existing.remove();
+  const t=document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2200);
+}
+
+/* =========================================================
+   ROOT RENDER
+   ========================================================= */
+async function boot(){
+  State.profile = await Profile.get();
+  const savedSettings = await Store.get('settings', null);
+  if(savedSettings) State.settings = Object.assign({geminiApiKey:''}, savedSettings);
+  const exStatus = await ExerciseDB.status();
+  State.exerciseSync = { status: exStatus.synced?'done':'idle', count: exStatus.count, syncedAt: exStatus.syncedAt };
+  await render();
+}
+
+async function render(){
+  const app=document.getElementById('app');
+  if(!State.profile){
+    app.innerHTML = renderSetup();
+    wireSetup();
+    return;
+  }
+  const dateKey=Utils.dateKey(State.currentDate);
+  const [entries, workout, water, weightHistory] = await Promise.all([
+    DayLog.get(dateKey), WorkoutLog.get(dateKey), WaterLog.get(dateKey), WeightLog.getAll()
+  ]);
+  const weekTotals = await getWeekCalories(State.currentDate);
+  app.innerHTML = renderShell(dateKey, entries, workout, water, weekTotals, weightHistory);
+  wireShell(dateKey, entries, workout, water, weightHistory);
+}
+
+/* =========================================================
+   SETUP / ONBOARDING
+   ========================================================= */
+const setupDraft = { name:'', sex:'male', age:30, heightCm:175, weightKg:75, activityLevel:'light', goalType:'maintain' };
+
+function renderSetup(){
+  const g = Calc.computeGoalsFromProfile(setupDraft);
+  return `
+  <div class="setup-shell">
+    <header class="brand" style="margin-bottom:18px;">
+      <div class="mark">P</div><div class="name">PULSE</div>
+    </header>
+    <div class="setup-card">
+      <h2>Let's set up your plan</h2>
+      <p class="lead">A few details so we can calculate your daily calorie &amp; macro targets.</p>
+
+      <div class="field">
+        <label for="su-name">Your name</label>
+        <input type="text" id="su-name" value="${Utils.esc(setupDraft.name)}" placeholder="e.g. Alex" />
+      </div>
+
+      <div class="field">
+        <label>Sex (used for BMR calculation)</label>
+        <div class="seg" id="su-sex">
+          ${['male','female','other'].map(s=>`<button type="button" data-sex="${s}" class="${setupDraft.sex===s?'active':''}">${s[0].toUpperCase()+s.slice(1)}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="row3">
+        <div class="field"><label for="su-age">Age</label><input type="number" id="su-age" min="13" max="100" value="${setupDraft.age}"/></div>
+        <div class="field"><label for="su-height">Height (cm)</label><input type="number" id="su-height" min="120" max="230" value="${setupDraft.heightCm}"/></div>
+        <div class="field"><label for="su-weight">Weight (kg)</label><input type="number" id="su-weight" min="30" max="250" value="${setupDraft.weightKg}"/></div>
+      </div>
+
+      <div class="field">
+        <label>Activity level</label>
+        <div class="seg" id="su-activity">
+          ${Calc.ACTIVITY.map(a=>`<button type="button" data-act="${a.id}" class="${setupDraft.activityLevel===a.id?'active':''}">${Utils.esc(a.label)}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Goal</label>
+        <div class="seg" id="su-goal">
+          ${Calc.GOALTYPES.map(gt=>`<button type="button" data-goal="${gt.id}" class="${setupDraft.goalType===gt.id?'active':''}">${Utils.esc(gt.label)}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="goal-preview" id="su-preview">
+        Based on these numbers: <strong>${g.calories} kcal/day</strong> · P ${g.protein}g · C ${g.carbs}g · F ${g.fat}g · Water ${Math.round(g.waterMl/1000*10)/10} L
+      </div>
+
+      <div class="setup-actions">
+        <button class="btn accent" id="su-save">Save &amp; start tracking</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function refreshSetupPreview(){
+  const g=Calc.computeGoalsFromProfile(setupDraft);
+  const el=document.getElementById('su-preview');
+  if(el) el.innerHTML = `Based on these numbers: <strong>${g.calories} kcal/day</strong> · P ${g.protein}g · C ${g.carbs}g · F ${g.fat}g · Water ${Math.round(g.waterMl/1000*10)/10} L`;
+}
+
+function wireSetup(){
+  const nameEl=document.getElementById('su-name');
+  nameEl.addEventListener('input', ()=>{ setupDraft.name=nameEl.value; });
+
+  document.getElementById('su-sex').addEventListener('click', (e)=>{
+    const b=e.target.closest('button[data-sex]'); if(!b) return;
+    setupDraft.sex=b.dataset.sex;
+    document.querySelectorAll('#su-sex button').forEach(x=>x.classList.toggle('active', x===b));
+    refreshSetupPreview();
+  });
+  document.getElementById('su-activity').addEventListener('click', (e)=>{
+    const b=e.target.closest('button[data-act]'); if(!b) return;
+    setupDraft.activityLevel=b.dataset.act;
+    document.querySelectorAll('#su-activity button').forEach(x=>x.classList.toggle('active', x===b));
+    refreshSetupPreview();
+  });
+  document.getElementById('su-goal').addEventListener('click', (e)=>{
+    const b=e.target.closest('button[data-goal]'); if(!b) return;
+    setupDraft.goalType=b.dataset.goal;
+    document.querySelectorAll('#su-goal button').forEach(x=>x.classList.toggle('active', x===b));
+    refreshSetupPreview();
+  });
+  ['su-age','su-height','su-weight'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', (e)=>{
+      const v=Utils.num(e.target.value, id==='su-age'?30:id==='su-height'?175:75);
+      if(id==='su-age') setupDraft.age=v;
+      if(id==='su-height') setupDraft.heightCm=v;
+      if(id==='su-weight') setupDraft.weightKg=v;
+      refreshSetupPreview();
+    });
+  });
+  document.getElementById('su-save').addEventListener('click', async ()=>{
+    const goals=Calc.computeGoalsFromProfile(setupDraft);
+    const profile={
+      name:setupDraft.name.trim()||'Athlete', sex:setupDraft.sex, age:setupDraft.age,
+      heightCm:setupDraft.heightCm, weightKg:setupDraft.weightKg,
+      activityLevel:setupDraft.activityLevel, goalType:setupDraft.goalType, goals
+    };
+    await Profile.set(profile);
+    State.profile=profile;
+    showToast('Plan saved — welcome to PULSE!');
+    await render();
+  });
+}
+
+/* =========================================================
+   WEEK CALORIES (for the small bar chart)
+   ========================================================= */
+async function getWeekCalories(anchorDate){
+  const days=[];
+  for(let i=6;i>=0;i--) days.push(Utils.addDays(anchorDate,-i));
+  const results=await Promise.all(days.map(async d=>{
+    const entries=await DayLog.get(Utils.dateKey(d));
+    return {date:d, cal:Calc.totals(entries).calories};
+  }));
+  return results;
+}
+
+/* =========================================================
+   SHELL / DASHBOARD RENDER
+   ========================================================= */
+function ringSvg(pct, color){
+  pct=Utils.clamp(pct,0,1);
+  const r=52, c=2*Math.PI*r, offset=c*(1-pct);
+  return `<svg width="126" height="126" viewBox="0 0 126 126">
+    <circle cx="63" cy="63" r="${r}" fill="none" stroke="var(--bg-soft)" stroke-width="12"/>
+    <circle cx="63" cy="63" r="${r}" fill="none" stroke="${color}" stroke-width="12"
+      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"/>
+  </svg>`;
+}
+
+function renderShell(dateKey, entries, workout, water, weekTotals, weightHistory){
+  const profile=State.profile;
+  const totals=Calc.totals(entries);
+  const goals=profile.goals;
+  const dow=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const maxWeekCal=Math.max(1, goals.calories, ...weekTotals.map(w=>w.cal));
+
+  return `
+    <header class="topbar">
+      <div class="brand"><div class="mark">P</div><div class="name">PULSE</div></div>
+      <div class="who">
+        <button class="iconbtn" id="btn-reset" title="Edit profile">⚙</button>
+        <div class="avatar" style="background:${Utils.avatarColor(profile.name)}">${Utils.esc(Utils.initials(profile.name))}</div>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button data-tab="today" class="${State.activeTab==='today'?'active':''}">Today</button>
+      <button data-tab="workout" class="${State.activeTab==='workout'?'active':''}">Workout</button>
+      <button data-tab="progress" class="${State.activeTab==='progress'?'active':''}">Progress</button>
+      <button data-tab="coach" class="${State.activeTab==='coach'?'active':''}">Coach</button>
+    </nav>
+
+    ${State.activeTab==='today' ? renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxWeekCal, dow) : ''}
+    ${State.activeTab==='workout' ? renderWorkoutTab(dateKey, workout) : ''}
+    ${State.activeTab==='progress' ? renderProgressTab(weightHistory) : ''}
+    ${State.activeTab==='coach' ? renderCoachTab() : ''}
+  `;
+}
+
+function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxWeekCal, dow){
+  const calPct = goals.calories>0 ? totals.calories/goals.calories : 0;
+  const macros=[
+    {key:'protein', label:'Protein', color:'var(--protein)', val:totals.protein, goal:goals.protein},
+    {key:'carbs', label:'Carbs', color:'var(--carbs)', val:totals.carbs, goal:goals.carbs},
+    {key:'fat', label:'Fat', color:'var(--fat)', val:totals.fat, goal:goals.fat}
+  ];
+  const waterPct = goals.waterMl>0 ? water.ml/goals.waterMl : 0;
+
+  return `
+    <div class="datebar">
+      <div class="dnav">
+        <button class="navbtn" id="date-prev">←</button>
+        <div class="dlabel">${Utils.esc(Utils.prettyDate(State.currentDate))}</div>
+        <button class="navbtn" id="date-next">→</button>
+      </div>
+      ${Utils.dateKey(State.currentDate)!==Utils.dateKey(new Date()) ? `<button class="today-pill" id="date-today">Jump to today</button>` : ''}
+    </div>
+
+    <div class="grid overview">
+      <div class="card">
+        <div class="card-head">
+          <div><p class="card-title">Nutrition</p><p class="card-sub">${totals.calories} of ${goals.calories} kcal · ${Utils.roundInt(calPct*100)}%</p></div>
+        </div>
+        <div class="ring-row">
+          <div class="ring-wrap">
+            ${ringSvg(calPct, 'var(--accent)')}
+            <div class="ring-center">
+              <div class="ring-num">${Utils.roundInt(calPct*100)}%</div>
+              <div class="ring-lbl">${Utils.roundInt(Math.max(0,goals.calories-totals.calories))} kcal left</div>
+            </div>
+          </div>
+          <div class="macro-list">
+            ${macros.map(m=>{
+              const pct=m.goal>0?Utils.clamp(m.val/m.goal,0,1):0;
+              return `<div class="macro-row">
+                <span class="swatch" style="background:${m.color}"></span>
+                <span style="width:52px;flex:none;">${m.label}</span>
+                <span class="bar-track"><span class="bar-fill" style="width:${pct*100}%;background:${m.color}"></span></span>
+                <span class="amt">${Utils.roundInt(m.val)}/${m.goal}g · ${Utils.roundInt(pct*100)}%</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <p class="card-sub" style="margin-bottom:6px;">This week</p>
+        <div class="week">
+          ${weekTotals.map(w=>{
+            const h=Utils.clamp((w.cal/maxWeekCal)*100,2,100);
+            const active=Utils.isSameDay(w.date,State.currentDate);
+            return `<div class="col ${active?'active':''}"><div class="bar" style="height:${h}%"></div><div class="dow">${dow[w.date.getDay()]}</div></div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="card water-card">
+        <div class="card-head">
+          <div><p class="card-title">Water</p><p class="card-sub">Goal: ${Math.round(goals.waterMl/1000*10)/10} L</p></div>
+        </div>
+        <div class="amount">${Math.round(water.ml/10)/100} L</div>
+        <div class="water-track"><div class="water-fill" style="width:${Utils.clamp(waterPct*100,0,100)}%"></div></div>
+        <div class="water-btns">
+          <button class="chip-btn" data-water="250">+250 ml</button>
+          <button class="chip-btn" data-water="500">+500 ml</button>
+          <button class="chip-btn minus" data-water="-250">−250 ml</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-head">
+        <div><p class="card-title">Food log</p><p class="card-sub">${Utils.esc(Utils.prettyDate(State.currentDate))}</p></div>
+      </div>
+      ${MEAL_TYPES.map(mt=>renderMealBlock(mt, entries.filter(e=>e.mealType===mt.id))).join('')}
+    </div>
+  `;
+}
+
+function renderMealBlock(mealType, mealEntries){
+  const cal=Calc.totals(mealEntries).calories;
+  const isOpen = State.addPanel.open && State.addPanel.meal===mealType.id;
+  return `
+  <div class="meal-block" data-meal-block="${mealType.id}">
+    <div class="meal-head">
+      <div class="meal-name"><span class="dot" style="background:${mealType.color}"></span>${mealType.label}</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="meal-cal">${Utils.roundInt(cal)} kcal</span>
+        <button class="add-chip" data-open-add="${mealType.id}" title="Add food">${isOpen?'−':'+'}</button>
+      </div>
+    </div>
+    ${mealEntries.length ? mealEntries.map(e=>renderEntryRow(e)).join('') : `<div class="empty">No foods logged yet</div>`}
+    ${isOpen ? renderAddPanel() : ''}
+  </div>`;
+}
+
+function renderEntryRow(e){
+  const tagClass = e.source==='db' ? 'db' : e.source==='ai' ? 'ai' : e.source==='web' ? 'web' : 'manual';
+  const tagLabel = e.source==='db' ? 'DB' : e.source==='ai' ? 'AI' : e.source==='web' ? 'WEB' : 'MANUAL';
+  const metaParts=[];
+  if(e.quantity && e.unit) metaParts.push(`${e.quantity} ${e.unit}`);
+  metaParts.push(`P${Utils.roundInt(e.protein)} C${Utils.roundInt(e.carbs)} F${Utils.roundInt(e.fat)}`);
+  return `<div class="entry" data-entry-id="${e.id}">
+    <div class="info">
+      <div class="ename">${Utils.esc(e.name)}</div>
+      <div class="emeta"><span class="tag ${tagClass}">${tagLabel}</span><span>${Utils.esc(metaParts.join(' · '))}</span></div>
+    </div>
+    <div class="eright">
+      <div class="ecal">${Utils.roundInt(e.calories)}</div>
+      <button class="del" data-del-entry="${e.id}" title="Remove">×</button>
+    </div>
+  </div>`;
+}
+
+function renderWebFoodBlock(){
+  const ap=State.addPanel;
+  const q=ap.query.trim();
+  if(q.length<2) return '';
+  if(ap.webQueriedFor===q){
+    if(ap.webStatus==='loading') return `<div class="status-line">Searching Open Food Facts…</div>`;
+    if(ap.webStatus==='error') return `<div class="status-line err">Open Food Facts unavailable right now. <button type="button" class="link-btn" id="ap-web-retry">Retry</button></div>`;
+    if(ap.webResults.length){
+      return `<div class="status-line" style="margin-top:6px;">Open Food Facts (${ap.webResults.length})</div>` +
+        ap.webResults.map((f,i)=>`<button type="button" class="result-row" style="width:100%;background:none;border:none;text-align:left;" data-pick-web="${i}">
+          <span><span class="result-name">${Utils.esc(f.name)}</span><br><span class="result-meta">${Utils.roundInt(f.per100.cal)} kcal / 100g <span class="tag web">WEB</span></span></span>
+        </button>`).join('');
+    }
+    return `<div class="status-line">No Open Food Facts matches for "${Utils.esc(q)}".</div>`;
+  }
+  return `<button type="button" class="btn secondary" id="ap-web-search" style="margin-top:4px;">Search Open Food Facts for "${Utils.esc(q)}"</button>`;
+}
+
+function renderBarcodeBlock(){
+  const ap=State.addPanel;
+  return `
+    <div class="field" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px;">
+      <label>Or scan/enter a barcode (Open Food Facts)</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" inputmode="numeric" id="ap-barcode" placeholder="e.g. 3017620422003" value="${Utils.esc(ap.barcode)}"/>
+        <button type="button" class="btn secondary" id="ap-barcode-go">Look up</button>
+      </div>
+      <button type="button" class="btn accent" id="ap-barcode-scan" style="width:100%;margin-top:6px;">📷 Scan with camera</button>
+      <div class="status-line" style="padding-top:4px;">Camera scan needs this page loaded over https:// (or a local server) — it won't work when the file is opened directly from disk in most browsers.</div>
+      ${ap.barcodeStatus==='loading' ? `<div class="status-line">Looking up barcode…</div>` : ''}
+      ${ap.barcodeStatus==='notfound' ? `<div class="status-line err">No product found for that barcode.</div>` : ''}
+      ${ap.barcodeStatus==='error' ? `<div class="status-line err">Open Food Facts unavailable right now.</div>` : ''}
+    </div>`;
+}
+
+function renderAddPanel(){
+  const ap=State.addPanel;
+  const mode=ap.mode;
+  let body='';
+  if(mode==='search'){
+    const results = ap.query.trim() ? FoodDB.search(ap.query, 8) : [];
+    body = `
+      <div class="field"><input type="search" id="ap-search" placeholder="Search foods (e.g. chicken breast)" value="${Utils.esc(ap.query)}" autocomplete="off"/></div>
+      ${ap.selected ? renderSelectedFoodRow(ap.selected) : `
+        ${results.length ? results.map(f=>`<button type="button" class="result-row" style="width:100%;background:none;border:none;text-align:left;" data-pick-food="${Utils.esc(f.name)}">
+            <span><span class="result-name">${Utils.esc(f.name)}</span><br><span class="result-meta">${f.per100.cal} kcal / 100g <span class="tag db">DB</span></span></span>
+          </button>`).join('')
+        : (ap.query.trim() ? '' : `<div class="status-line">Start typing to search 300+ common foods, or millions more via Open Food Facts below.</div>`)
+        }
+        ${renderWebFoodBlock()}
+        ${renderBarcodeBlock()}
+      `}
+    `;
+  } else {
+    const m=ap.manual;
+    body = `
+      <div class="field"><label>Food name</label><input type="text" id="ap-mname" value="${Utils.esc(m.name)}" placeholder="e.g. Homemade smoothie"/></div>
+      <div class="row2">
+        <div class="field"><label>Calories</label><input type="number" id="ap-mcal" min="0" value="${Utils.esc(m.calories)}"/></div>
+        <div class="field"><label>Protein (g)</label><input type="number" id="ap-mprotein" min="0" value="${Utils.esc(m.protein)}"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Carbs (g)</label><input type="number" id="ap-mcarbs" min="0" value="${Utils.esc(m.carbs)}"/></div>
+        <div class="field"><label>Fat (g)</label><input type="number" id="ap-mfat" min="0" value="${Utils.esc(m.fat)}"/></div>
+      </div>
+      <button class="btn accent" id="ap-manual-add">Add to log</button>
+    `;
+  }
+  return `
+  <div class="add-panel">
+    <div class="subtabs">
+      <button data-apmode="search" class="${mode==='search'?'active':''}">Search database</button>
+      <button data-apmode="manual" class="${mode==='manual'?'active':''}">Manual entry</button>
+    </div>
+    ${body}
+  </div>`;
+}
+
+function renderSelectedFoodRow(sel){
+  const food=State.addPanel.pickedFood;
+  if(!food) return '';
+  const m=FoodDB.macrosFor(food, sel.qty, sel.unit);
+  const tagClass = food.source==='web' ? 'web' : 'db';
+  const tagLabel = food.source==='web' ? 'WEB' : 'DB';
+  const massUnit = food.isLiquid ? 'ml' : 'g';
+  const opts=unitOptionsFor(food);
+  const servingHint = (sel.unit==='serving' && food.servingLabel)
+    ? `<div class="result-meta" style="margin-top:2px;">1 portion = ${Utils.esc(food.servingLabel)}</div>` : '';
+  return `
+    <div class="result-row">
+      <div><div class="result-name">${Utils.esc(food.name)} <span class="tag ${tagClass}">${tagLabel}</span></div><div class="result-meta">${m.calories} kcal · P${m.protein} C${m.carbs} F${m.fat} (${m.grams}${massUnit})</div>${servingHint}</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="number" class="qty-input" id="ap-qty" min="0" step="0.5" value="${Utils.esc(sel.qty)}"/>
+        <select id="ap-unit">${opts.map(u=>`<option value="${u}" ${sel.unit===u?'selected':''}>${u==='serving'?'portion':u}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn accent" id="ap-confirm-add">Add to log</button>
+      <button class="btn secondary" id="ap-clear-select">Choose different food</button>
+    </div>
+  `;
+}
+
+/* =========================================================
+   WORKOUT TAB
+   ========================================================= */
+function renderExerciseSyncStatus(){
+  const s=State.exerciseSync;
+  if(s.status==='syncing') return `Syncing exercise library… ${s.count} loaded so far.`;
+  if(s.status==='error') return `Couldn't sync the exercise library. <button type="button" class="link-btn" id="ex-sync-btn">Retry</button>`;
+  if(s.status==='done') return `Exercise library: ${s.count} exercises (wger, free) <button type="button" class="link-btn" id="ex-sync-btn">Resync</button>`;
+  return `<button type="button" class="link-btn" id="ex-sync-btn">Sync free exercise library (900+, via wger)</button>`;
+}
+
+function renderWorkoutTab(dateKey, workout){
+  const cat=State.workoutInput.category||'strength';
+  return `
+    <div class="datebar">
+      <div class="dnav">
+        <button class="navbtn" id="date-prev">←</button>
+        <div class="dlabel">${Utils.esc(Utils.prettyDate(State.currentDate))}</div>
+        <button class="navbtn" id="date-next">→</button>
+      </div>
+      ${Utils.dateKey(State.currentDate)!==Utils.dateKey(new Date()) ? `<button class="today-pill" id="date-today">Jump to today</button>` : ''}
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <div class="card-head"><div><p class="card-title">Today's workout</p><p class="card-sub">${workout.entries.length} exercise${workout.entries.length===1?'':'s'} logged</p></div></div>
+        <div class="seg" id="wk-category" style="margin-bottom:10px;">
+          <button type="button" data-cat="strength" class="${cat==='strength'?'active':''}">Strength</button>
+          <button type="button" data-cat="cardio" class="${cat==='cardio'?'active':''}">Cardio</button>
+        </div>
+        ${cat==='cardio' ? `<div class="water-btns" style="margin-bottom:10px;">
+          ${['Run','Walk','Bike','Cardio'].map(l=>`<button type="button" class="chip-btn" data-cardio-preset="${l}">${l}</button>`).join('')}
+        </div>` : ''}
+        <div class="status-line" style="padding-top:0;">${renderExerciseSyncStatus()}</div>
+        <div class="quicklog" style="position:relative;">
+          <input type="text" id="wk-exname" autocomplete="off" placeholder="${cat==='cardio'?'Add cardio (e.g. Morning Run)':'Add exercise (e.g. Bench Press)'}" value="${Utils.esc(State.workoutInput.exerciseName)}"/>
+          <button class="btn accent" id="wk-add-exercise">Add</button>
+          ${State.workoutInput.suggestions.length ? `
+            <div class="ex-suggest">
+              ${State.workoutInput.suggestions.map(s=>`<button type="button" class="ex-suggest-row" data-pick-exercise="${Utils.esc(s.name)}">
+                <span class="fn">${Utils.esc(s.name)}</span>
+                <span class="fm">${Utils.esc([s.category, (s.equipment||[]).join(', ')].filter(Boolean).join(' · '))}</span>
+              </button>`).join('')}
+            </div>` : ''}
+        </div>
+        <div class="exlist" id="wk-exlist">
+          ${workout.entries.length ? workout.entries.map(ex=>renderExercise(ex)).join('') : `<div class="empty">No exercises logged for this day yet.</div>`}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><p class="card-title">Personal records</p><p class="card-sub">Best lifts &amp; best paces on record</p></div></div>
+        <div id="pr-list" class="pr-list"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderExercise(ex){
+  const isCardio = ex.category==='cardio';
+  const best = isCardio ? Calc.bestPaceSummary(ex.sets) : Calc.bestSetSummary(ex.sets);
+  const bestLabel = isCardio
+    ? (best ? ` · best pace ~${Calc.formatPace(best.durationSec,best.distanceKm)}` : '')
+    : (best ? ` · best ~${Utils.roundInt(best.est)} ${best.weightUnit} e1RM` : '');
+  return `
+  <div class="exercise" data-exercise-id="${ex.id}" data-category="${isCardio?'cardio':'strength'}">
+    <div class="exercise-head">
+      <div><div class="en">${Utils.esc(ex.exerciseName)}</div><div class="em">${ex.sets.length} ${isCardio?(ex.sets.length===1?'session':'sessions'):(ex.sets.length===1?'set':'sets')}${bestLabel}<span class="cmp" id="cmp-${ex.id}"></span></div></div>
+      <button class="del" data-del-exercise="${ex.id}" title="Remove exercise">×</button>
+    </div>
+    <div class="sets">
+      ${ex.sets.map((s,i)=> isCardio ? `
+        <div class="setrow">
+          <span class="sn">${i+1}</span>
+          <span class="sd">${s.distanceKm!=null?Utils.round(s.distanceKm,2)+' km':''}${s.durationSec!=null?` in ${Calc.formatDuration(s.durationSec)}`:''}${(s.distanceKm&&s.durationSec)?` · ${Calc.formatPace(s.durationSec,s.distanceKm)}`:''}</span>
+          <button class="del" data-del-set="${ex.id}|${s.id}">×</button>
+        </div>` : `
+        <div class="setrow">
+          <span class="sn">${i+1}</span>
+          <span class="sd">${s.reps!=null?`${s.reps} reps`:''}${s.weight!=null?` @ ${s.weight}${s.weightUnit||'lb'}`:''}</span>
+          <button class="del" data-del-set="${ex.id}|${s.id}">×</button>
+        </div>`).join('')}
+    </div>
+    ${isCardio ? `
+    <div class="addset-row">
+      <input type="number" min="0" step="0.01" placeholder="Distance (km)" class="setinput" data-field="distance" data-exid="${ex.id}"/>
+      <input type="number" min="0" step="0.5" placeholder="Time (min)" class="setinput" data-field="duration" data-exid="${ex.id}"/>
+      <button class="btn secondary" data-add-set="${ex.id}">+ Log</button>
+    </div>` : `
+    <div class="addset-row">
+      <input type="number" min="0" placeholder="Reps" class="setinput" data-field="reps" data-exid="${ex.id}"/>
+      <input type="number" min="0" step="0.5" placeholder="Weight" class="setinput" data-field="weight" data-exid="${ex.id}"/>
+      <select class="setinput" data-field="weightUnit" data-exid="${ex.id}" style="max-width:70px;">
+        <option value="lb">lb</option><option value="kg">kg</option>
+      </select>
+      <button class="btn secondary" data-add-set="${ex.id}">+ Set</button>
+    </div>`}
+  </div>`;
+}
+
+async function computeAllPRs(){
+  const keys=await Store.list('workout:');
+  const prMap={};
+  for(const key of keys){
+    const w=sanitizeWorkout(await Store.get(key, {entries:[]}));
+    w.entries.forEach(ex=>{
+      if(ex.category==='cardio'){
+        const best=Calc.bestPaceSummary(ex.sets);
+        if(best){
+          const cur=prMap[ex.exerciseName];
+          if(!cur || cur.type!=='pace' || best.pace<cur.pace) prMap[ex.exerciseName]={type:'pace', ...best};
+        }
+      } else {
+        const best=Calc.bestSetSummary(ex.sets);
+        if(best){
+          const cur=prMap[ex.exerciseName];
+          if(!cur || cur.type!=='strength' || best.est>cur.est) prMap[ex.exerciseName]={type:'strength', ...best};
+        }
+      }
+    });
+  }
+  return Object.keys(prMap).sort().map(name=>({name, ...prMap[name]}));
+}
+
+async function renderPRListInto(container){
+  const prs=await computeAllPRs();
+  container.innerHTML = prs.length
+    ? prs.map(p=> p.type==='pace'
+        ? `<div class="pr-row"><span class="pn">${Utils.esc(p.name)}</span><span class="pv">${Utils.round(p.distanceKm,2)} km · ${Calc.formatPace(p.durationSec,p.distanceKm)}</span></div>`
+        : `<div class="pr-row"><span class="pn">${Utils.esc(p.name)}</span><span class="pv">${p.weight}${p.weightUnit} × ${p.reps} (~${Utils.roundInt(p.est)} e1RM)</span></div>`
+      ).join('')
+    : `<div class="empty">Log a few sets or cardio sessions to see PRs here.</div>`;
+}
+
+/* =========================================================
+   SESSION-OVER-SESSION COMPARISON — "+50% vs last time" badges
+   ========================================================= */
+async function computePreviousVolumes(beforeDateKey){
+  const keys=await Store.list('workout:');
+  const prevMap={};
+  for(const key of keys){
+    const dk=key.slice('workout:'.length);
+    if(!Utils.isValidDateKey(dk) || dk>=beforeDateKey) continue;
+    const w=sanitizeWorkout(await Store.get(key, {entries:[]}));
+    w.entries.forEach(ex=>{
+      const info=Calc.volumeInfo(ex.sets);
+      if(!info) return;
+      const cur=prevMap[ex.exerciseName];
+      if(!cur || dk>cur.dateKey) prevMap[ex.exerciseName]={dateKey:dk, value:info.value, type:info.type};
+    });
+  }
+  return prevMap;
+}
+
+async function renderComparisonsInto(dateKey, entries){
+  if(!entries || !entries.length) return;
+  const prevMap=await computePreviousVolumes(dateKey);
+  entries.forEach(ex=>{
+    const el=document.getElementById('cmp-'+ex.id);
+    if(!el) return;
+    const info=Calc.volumeInfo(ex.sets);
+    const prev=prevMap[ex.exerciseName];
+    if(!info || !prev || prev.type!==info.type || !prev.value){ el.textContent=''; return; }
+    const pct=((info.value-prev.value)/prev.value)*100;
+    if(!isFinite(pct)){ el.textContent=''; return; }
+    const label = info.type==='distance' ? 'distance' : 'volume';
+    const arrow = pct>=0 ? '▲' : '▼';
+    el.textContent = ` · ${arrow} ${Math.abs(Math.round(pct))}% ${label} vs ${Utils.prettyDate(Utils.parseDateKey(prev.dateKey))}`;
+    el.style.color = pct>=0 ? 'var(--success)' : 'var(--danger)';
+  });
+}
+
+/* =========================================================
+   PROGRESS TAB — weight & body-fat tracking with trend charts
+   ========================================================= */
+function trendChartSvg(points, color){
+  // points: [{date:Date, value:number}], already filtered to non-null values, ascending by date
+  const w=560, h=140, padX=14, padY=16;
+  if(points.length===0){
+    return `<div class="empty">Log an entry to start your trend.</div>`;
+  }
+  if(points.length===1){
+    return `<div class="empty">Log one more entry to see a trend line.</div>`;
+  }
+  const values=points.map(p=>p.value);
+  let min=Math.min(...values), max=Math.max(...values);
+  if(min===max){ min-=1; max+=1; }
+  const range=max-min;
+  const stepX=(w-2*padX)/(points.length-1);
+  const coords=points.map((p,i)=>({
+    x: padX+stepX*i,
+    y: padY+(h-2*padY)*(1-(p.value-min)/range)
+  }));
+  const linePath=coords.map((c,i)=>(i===0?'M':'L')+c.x.toFixed(1)+' '+c.y.toFixed(1)).join(' ');
+  const areaPath=linePath+` L ${coords[coords.length-1].x.toFixed(1)} ${(h-padY).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(h-padY).toFixed(1)} Z`;
+  const dots=coords.map((c,i)=>`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${i===coords.length-1?4.5:2.5}" fill="${color}"/>`).join('');
+  const fmt=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  return `
+    <svg class="trend-chart" viewBox="0 0 ${w} ${h}" width="100%" height="140" preserveAspectRatio="none">
+      <path d="${areaPath}" fill="${color}" opacity="0.10" stroke="none"/>
+      <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+    </svg>
+    <div class="trend-dates"><span>${fmt(points[0].date)}</span><span>${fmt(points[points.length-1].date)}</span></div>
+  `;
+}
+
+function statCard(label, unit, points, color, decimals){
+  const has=points.length>0;
+  const last=has?points[points.length-1].value:null;
+  const first=has?points[0].value:null;
+  const delta=has && points.length>1 ? last-first : 0;
+  const deltaClass = delta<0 ? 'down' : delta>0 ? 'up' : '';
+  const deltaStr = has && points.length>1
+    ? `${delta>0?'+':''}${Utils.round(delta,decimals)}${unit} since first log`
+    : 'Log a second entry to see a trend';
+  return `
+    <div class="stat-card">
+      <div class="slabel">${label}</div>
+      <div class="sval">${has?Utils.round(last,decimals)+unit:'—'}</div>
+      <div class="sdelta ${deltaClass}">${deltaStr}</div>
+    </div>`;
+}
+
+function renderProgressTab(weightHistory){
+  const draft=State.progressDraft;
+  const todayKey=Utils.dateKey(new Date());
+  const existingToday=weightHistory.find(e=>e.date===todayKey);
+
+  const weightPoints=weightHistory.filter(e=>e.weightKg!=null).map(e=>({date:Utils.parseDateKey(e.date), value:e.weightKg}));
+  const fatPoints=weightHistory.filter(e=>e.bodyFatPct!=null).map(e=>({date:Utils.parseDateKey(e.date), value:e.bodyFatPct}));
+
+  const recent=weightHistory.slice().sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:0).slice(0,14);
+
+  return `
+    <div class="grid two">
+      <div class="card">
+        <div class="card-head">
+          <div><p class="card-title">Log your stats</p><p class="card-sub">${existingToday?'Updates today\u2019s entry':'For today · '+Utils.esc(Utils.prettyDate(new Date()))}</p></div>
+        </div>
+        <div class="log-form">
+          <div class="row2">
+            <div class="field">
+              <label for="pg-weight">Weight (kg)</label>
+              <input type="number" id="pg-weight" min="20" max="400" step="0.1" placeholder="e.g. 74.5" value="${Utils.esc(draft.weightKg)}"/>
+            </div>
+            <div class="field">
+              <label for="pg-bodyfat">Body fat (%)</label>
+              <input type="number" id="pg-bodyfat" min="1" max="70" step="0.1" placeholder="e.g. 18.5" value="${Utils.esc(draft.bodyFatPct)}"/>
+            </div>
+          </div>
+          <button class="btn accent" id="pg-save" style="width:100%;margin-top:4px;">Save today's entry</button>
+        </div>
+      </div>
+
+      <div class="stat-cards">
+        ${statCard('Weight', ' kg', weightPoints, 'var(--accent)', 1)}
+        ${statCard('Body fat', '%', fatPoints, 'var(--accent2)', 1)}
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-head"><div><p class="card-title">Weight trend</p><p class="card-sub">All logged entries</p></div></div>
+        ${trendChartSvg(weightPoints, 'var(--accent)')}
+      </div>
+      <div class="card">
+        <div class="card-head"><div><p class="card-title">Body fat trend</p><p class="card-sub">All logged entries</p></div></div>
+        ${trendChartSvg(fatPoints, 'var(--accent2)')}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-head"><div><p class="card-title">History</p><p class="card-sub">Most recent entries</p></div></div>
+      <div class="history-list">
+        ${recent.length ? recent.map(e=>`
+          <div class="history-row">
+            <span class="hdate">${Utils.esc(Utils.prettyDate(Utils.parseDateKey(e.date)))}</span>
+            <span class="hvals">${e.weightKg!=null?Utils.round(e.weightKg,1)+' kg':'—'}${e.bodyFatPct!=null?` <span>· ${Utils.round(e.bodyFatPct,1)}% BF</span>`:''}</span>
+            <button class="del" data-del-weight="${e.id}" title="Remove">×</button>
+          </div>`).join('')
+          : `<div class="empty">No entries yet — log your weight above to start tracking.</div>`}
+      </div>
+    </div>
+  `;
+}
+
+/* =========================================================
+   FAQ ENGINE — free, offline fallback for the Coach when no
+   AI key is configured. A curated fitness/nutrition Q&A base
+   matched by keyword overlap, so the app is always useful for
+   $0 even without any external AI service.
+   ========================================================= */
+const FAQ = (function(){
+  const items=[
+    {q:"Combien de protéines dois-je manger par jour ?", kw:["proteine","proteines","combien de proteine","grammes de proteine par jour"],
+      a:"Pour la plupart des objectifs (perte de gras, prise de muscle, maintien), vise 1.6 à 2.2 g de protéines par kg de poids de corps par jour. Répartis sur 3-4 repas, c'est amplement suffisant pour maximiser la synthèse musculaire — inutile de dépasser 2.5g/kg, l'excédent n'apporte pas de bénéfice supplémentaire."},
+    {q:"Comment perdre du poids ?", kw:["perdre du poids","perte de poids","maigrir","deficit calorique","perdre du gras"],
+      a:"La perte de poids demande un déficit calorique : manger un peu moins de calories que ce que tu dépenses. Un déficit modéré de 300-500 kcal/jour est efficace et plus facile à tenir qu'un déficit agressif. Garde tes protéines élevées pour préserver ton muscle pendant la perte."},
+    {q:"Comment prendre du muscle / de la masse ?", kw:["prise de masse","prendre du muscle","surplus calorique","grossir muscle"],
+      a:"Pour prendre du muscle, il faut un léger surplus calorique (environ 200-300 kcal au-dessus de ton maintien), des protéines suffisantes (1.6-2.2g/kg), et un entraînement en résistance progressif (tu ajoutes du poids ou des reps au fil du temps). La patience est clé : viser 0.25-0.5 kg de prise par semaine évite de prendre trop de gras."},
+    {q:"Cardio ou musculation pour perdre du gras ?", kw:["cardio ou musculation","cardio vs musculation","perdre du gras cardio"],
+      a:"Les deux aident, mais différemment : le déficit calorique (alimentation) est ce qui fait perdre du gras, la musculation préserve ton muscle pendant la perte, et le cardio augmente la dépense calorique et la santé cardiovasculaire. L'idéal est de combiner musculation 2-4x/semaine avec un peu de cardio selon tes goûts."},
+    {q:"Combien de fois par semaine s'entraîner ?", kw:["combien de fois par semaine","frequence entrainement","frequence musculation"],
+      a:"3 à 5 séances de musculation par semaine est un bon point de départ pour la plupart des gens, en laissant au moins un jour de repos entre les séances qui ciblent les mêmes groupes musculaires. Débutant ? 3x/semaine en full-body suffit largement pour progresser."},
+    {q:"Combien de temps de repos entre les séries ?", kw:["repos entre series","temps de repos","pause entre series"],
+      a:"Pour la force et l'hypertrophie (prise de muscle), 1.5 à 3 minutes de repos entre les séries sur les gros mouvements (squat, développé couché) donne les meilleurs résultats. Pour les exercices d'isolation plus légers, 60-90 secondes suffisent."},
+    {q:"Les courbatures (DOMS) sont-elles normales ?", kw:["courbatures","doms","muscles endoloris","douleur apres entrainement"],
+      a:"Oui, les courbatures (DOMS) sont normales, surtout après un nouvel exercice ou une intensité inhabituelle. Elles ne sont pas nécessaires pour progresser — leur absence ne veut pas dire que ta séance était inefficace. Bouge légèrement, hydrate-toi et laisse 48-72h avant de refaire travailler le même groupe intensément."},
+    {q:"La créatine, ça sert à quoi ?", kw:["creatine","creatine monohydrate","dosage creatine"],
+      a:"La créatine monohydrate est l'un des suppléments les plus étudiés et efficaces : elle améliore la force et la performance sur les efforts courts et intenses. Dose classique : 3-5g par jour, tous les jours (pas besoin de phase de charge). Elle est sûre pour la grande majorité des gens en bonne santé."},
+    {q:"La whey protéine est-elle utile ?", kw:["whey","proteine en poudre","shaker proteine"],
+      a:"La whey est simplement une façon pratique d'atteindre ton apport en protéines — ce n'est pas magique et n'est pas obligatoire si tu couvres tes besoins avec de la nourriture. Utile si tu manques de temps ou d'appétit pour manger assez de protéines autrement."},
+    {q:"Combien d'eau dois-je boire par jour ?", kw:["combien eau","hydratation","boire eau par jour"],
+      a:"Une cible générale est d'environ 30-35 ml par kg de poids de corps par jour (plus si tu t'entraînes fort ou qu'il fait chaud). Ta couleur d'urine (claire = bon signe) est un indicateur simple. Pas besoin de compter au ml près."},
+    {q:"Le jeûne intermittent aide-t-il à perdre du poids ?", kw:["jeune intermittent","fasting","16 8"],
+      a:"Le jeûne intermittent peut aider certaines personnes à créer un déficit calorique plus facilement (moins de fenêtres pour manger), mais ce n'est pas magique — ce qui compte reste le total de calories sur la journée/semaine. Choisis une approche que tu peux tenir sur le long terme."},
+    {q:"Mon poids stagne, que faire ?", kw:["plateau","poids stagne","je ne perds plus de poids","plateau de perte de poids"],
+      a:"Un plateau est normal après quelques semaines de déficit (le métabolisme s'adapte légèrement). Vérifie d'abord que tu pèses/mesures bien tes portions, puis réduis légèrement les calories (100-200 kcal) ou augmente un peu ton activité. Patiente 2-3 semaines avant de juger — le poids fluctue au jour le jour."},
+    {q:"Faut-il s'échauffer avant la musculation ?", kw:["echauffement","warm up avant musculation"],
+      a:"Oui, un échauffement de 5-10 minutes (cardio léger + quelques séries légères de l'exercice principal) réduit le risque de blessure et améliore la performance sur tes séries lourdes."},
+    {q:"Faut-il s'étirer avant ou après l'entraînement ?", kw:["etirements avant","etirements apres","stretching"],
+      a:"Les étirements dynamiques (mouvements amples et contrôlés) avant l'entraînement préparent bien le corps. Les étirements statiques (maintenir une position) sont plutôt à faire après, ou à un autre moment — ils peuvent temporairement réduire la force s'ils sont faits juste avant une séance intense."},
+    {q:"Manger des glucides le soir fait-il grossir ?", kw:["glucides le soir","manger le soir","manger la nuit fait grossir"],
+      a:"Non, c'est un mythe. Ce qui compte pour la gestion du poids, c'est le total de calories sur 24h (voire sur la semaine), pas le moment où tu manges tes glucides. Mange-les quand ça te convient le mieux."},
+    {q:"Qu'est-ce que l'index glycémique ?", kw:["index glycemique","ig aliment"],
+      a:"L'index glycémique mesure la vitesse à laquelle un aliment fait monter ta glycémie. Un IG bas (légumineuses, avoine) donne une énergie plus stable ; un IG élevé (pain blanc, sucre) donne un pic rapide. Utile à connaître, mais le total calorique et la qualité globale du régime comptent davantage pour la santé au quotidien."},
+    {q:"Faut-il faire des abdos tous les jours ?", kw:["abdos tous les jours","gainage quotidien","planche tous les jours"],
+      a:"Les abdominaux sont un muscle comme un autre : ils ont besoin de récupération. 2-4x/semaine avec une charge ou une difficulté progressive est plus efficace que tous les jours. Rappel : le 'ventre plat' dépend surtout du taux de graisse corporelle, pas du nombre de crunchs."},
+    {q:"En combien de temps vais-je voir des résultats ?", kw:["combien de temps resultats","voir des resultats","delai resultats"],
+      a:"Les changements de force arrivent souvent en 2-4 semaines. Les changements visuels (silhouette, perte de graisse visible) prennent généralement 6-12 semaines de constance. La régularité compte plus que l'intensité d'une seule séance."},
+    {q:"Peut-on avoir assez de protéines en étant végétarien ou vegan ?", kw:["proteine vegan","proteine vegetarien","proteine vegetale"],
+      a:"Oui, tout à fait. Combine légumineuses (lentilles, pois chiches, haricots), tofu, tempeh, seitan, et éventuellement une protéine en poudre végétale (pois, riz) pour atteindre facilement 1.6-2.2 g/kg par jour."},
+    {q:"L'alcool freine-t-il la perte de graisse ?", kw:["alcool perte de poids","alcool et musculation"],
+      a:"Oui, l'alcool apporte des calories vides (7 kcal/g), peut réduire ta motivation à bien manger, et perturbe légèrement le sommeil et la récupération. Une consommation occasionnelle et modérée reste compatible avec la progression, mais un excès régulier freine tes résultats."},
+    {q:"Le sommeil influence-t-il la récupération musculaire ?", kw:["sommeil recuperation","dormir musculation","sommeil et muscle"],
+      a:"Énormément. La majorité de la récupération et de la sécrétion d'hormones anabolisantes se fait pendant le sommeil profond. Vise 7-9h par nuit — un mauvais sommeil réduit tes performances, ta récupération et peut augmenter la faim."},
+    {q:"Le cardio à jeun fait-il perdre plus de gras ?", kw:["cardio a jeun","fasted cardio"],
+      a:"Pas vraiment — des études montrent que la perte de gras à long terme dépend du déficit calorique total sur la journée/semaine, pas du fait de faire du cardio à jeun ou non. Fais-le à jeun si tu préfères ça, sinon mange avant, l'un n'est pas supérieur à l'autre pour la perte de gras."},
+    {q:"Combien de séries par groupe musculaire par semaine ?", kw:["series par semaine","volume entrainement","combien de series"],
+      a:"Une fourchette générale efficace pour l'hypertrophie est de 10 à 20 séries par groupe musculaire par semaine, réparties sur 2-3 séances. Débutant : commence plutôt vers 10-12 séries et augmente progressivement."},
+    {q:"Full body ou split (push pull legs) ?", kw:["full body ou split","push pull legs","ppl"],
+      a:"Les deux fonctionnent. Full-body (tout le corps à chaque séance) est idéal si tu t'entraînes 2-3x/semaine. Un split comme Push/Pull/Legs est intéressant si tu peux t'entraîner 4-6x/semaine, car ça permet plus de volume par groupe musculaire."},
+    {q:"Reps lourdes ou légères pour progresser ?", kw:["reps lourdes ou legeres","charge lourde ou legere","force ou hypertrophie"],
+      a:"Pour la force pure : privilégie 1-6 reps avec des charges lourdes. Pour l'hypertrophie (volume musculaire) : une large fourchette de 6-20 reps fonctionne bien tant que tu approches l'échec musculaire. Varier les deux dans ton programme est une bonne stratégie."},
+    {q:"J'ai mal aux genoux/dos pendant les squats, que faire ?", kw:["douleur genou squat","mal au dos squat","douleur articulaire musculation"],
+      a:"Une douleur articulaire pendant un exercice n'est pas normale — arrête l'exercice, vérifie ta technique (profondeur, position des genoux/pieds), réduis la charge, et si la douleur persiste, consulte un professionnel de santé ou un kinésithérapeute avant de continuer."},
+    {q:"Comment calculer mes calories de maintien ?", kw:["calories de maintien","tdee","combien de calories par jour"],
+      a:"Ton TDEE (dépense énergétique totale) = ton métabolisme de base (BMR) x ton niveau d'activité. C'est justement ce que l'app calcule pour toi dans ton profil — regarde tes objectifs caloriques dans l'onglet Progress/Setup, basés sur ton poids, taille, âge et niveau d'activité."},
+    {q:"Faut-il manger juste après l'entraînement (fenêtre anabolique) ?", kw:["fenetre anabolique","manger apres entrainement","repas post entrainement"],
+      a:"La fameuse 'fenêtre anabolique' de 30 minutes est largement exagérée — ce qui compte le plus, c'est ton total de protéines et calories sur la journée. Manger dans les 1-2h après l'entraînement est une bonne pratique par confort, mais rien de dramatique si tu manges un peu plus tard."},
+    {q:"Les BCAA sont-ils utiles ?", kw:["bcaa","acides amines branches"],
+      a:"Si tu consommes déjà assez de protéines complètes dans la journée (viande, œufs, whey, légumineuses...), les BCAA n'apportent quasiment aucun bénéfice supplémentaire. Ce n'est pas un supplément prioritaire."},
+    {q:"Quels suppléments sont vraiment utiles pour débuter ?", kw:["supplements debutant","quels supplements prendre"],
+      a:"Les plus soutenus par la science : la créatine monohydrate (3-5g/jour) et une whey/protéine en poudre si tu as du mal à atteindre tes protéines par l'alimentation. Une multivitamine peut être utile en cas de régime restrictif. Tout le reste est secondaire — la nutrition et l'entraînement font 90% du travail."},
+    {q:"La musculation fait-elle grossir/prendre du volume chez les femmes ?", kw:["femme musculation volume","femme prendre du muscle"],
+      a:"Prendre beaucoup de volume musculaire demande du temps et un surplus calorique soutenu — ça n'arrive pas 'par accident' en s'entraînant normalement. La musculation aide plutôt à tonifier, renforcer les os et améliorer la composition corporelle, sans les niveaux de testostérone nécessaires pour un gain de masse important."},
+    {q:"Est-ce sûr de faire de la musculation en tant que senior ?", kw:["musculation senior","personne agee musculation","musculation apres 60 ans"],
+      a:"Oui, et c'est même très recommandé : la musculation aide à préserver la masse musculaire, la densité osseuse et l'équilibre avec l'âge. Commence progressivement, avec une bonne technique, et n'hésite pas à consulter un professionnel de santé avant de démarrer si tu as des conditions médicales."},
+    {q:"Est-ce dangereux de perdre du poids trop vite ?", kw:["perte de poids trop rapide","maigrir trop vite","danger perte de poids"],
+      a:"Perdre plus de 1% de ton poids de corps par semaine sur le long terme augmente le risque de perte musculaire, de fatigue et de reprise de poids ('effet yoyo'). Vise plutôt 0.5-1% de ton poids par semaine pour une perte durable. Pour toute perte de poids importante ou rapide, un avis médical est recommandé."},
+    {q:"Comment reprendre l'entraînement après une petite blessure ?", kw:["reprise apres blessure","blessure musculation","recommencer apres blessure"],
+      a:"Reprends progressivement, avec des charges réduites, et évite les mouvements qui reproduisent la douleur. Si la douleur persiste ou s'aggrave, consulte un professionnel de santé (médecin, physio) avant de continuer — je ne suis pas un professionnel médical."},
+    {q:"Qu'est-ce que le régime cétogène (keto) ?", kw:["regime keto","cetogene","low carb"],
+      a:"Le régime cétogène est très pauvre en glucides (souvent <50g/jour) et riche en graisses, ce qui met le corps en cétose. Il peut aider à perdre du poids en réduisant naturellement l'appétit chez certaines personnes, mais il n'est pas magique — un déficit calorique reste nécessaire, et ce n'est pas adapté à tout le monde (notamment pour la performance en musculation intense)."},
+    {q:"Combien de cardio par semaine pour la santé ?", kw:["combien de cardio par semaine","cardio recommandation"],
+      a:"Les recommandations générales sont d'environ 150 minutes de cardio modéré (ou 75 minutes intense) par semaine pour la santé cardiovasculaire. Plus si ton objectif est spécifiquement la perte de gras ou la performance en endurance."},
+    {q:"Vaut-il mieux s'entraîner le matin ou le soir ?", kw:["musculation matin ou soir","meilleur moment pour s'entrainer"],
+      a:"Le meilleur moment est celui où tu es le plus régulier et où tu as le plus d'énergie — il n'y a pas de moment 'magique' scientifiquement supérieur pour la majorité des gens. La constance sur la durée compte bien plus que l'heure de la séance."},
+    {q:"Quels sont les signes de surentraînement (overtraining) ?", kw:["surentrainement","overtraining","trop s'entrainer"],
+      a:"Fatigue persistante, baisse de performance malgré le repos, sommeil perturbé, irritabilité, blessures/douleurs qui traînent, et perte de motivation sont des signes classiques. Si tu les reconnais, prends une semaine de décharge (volume/intensité réduits) et priorise le sommeil et la nutrition."},
+    {q:"Comment créer un déficit calorique sans avoir constamment faim ?", kw:["deficit sans faim","perdre du poids sans avoir faim"],
+      a:"Privilégie les aliments riches en protéines et en fibres (légumes, légumineuses, viandes maigres) qui rassasient plus par calorie. Bois de l'eau avant les repas, mange lentement, et évite un déficit trop agressif — un déficit modéré (300-500 kcal) est bien plus facile à tenir sans faim constante."},
+    {q:"Peut-on prendre du muscle et perdre du gras en même temps (recomposition corporelle) ?", kw:["recomposition corporelle","prendre du muscle et perdre du gras en meme temps"],
+      a:"Oui, c'est possible surtout pour les débutants, les personnes en surpoids, ou celles qui reprennent l'entraînement après une pause — en mangeant autour de son maintien calorique, avec des protéines élevées et un bon programme de musculation. Pour les athlètes déjà avancés, c'est plus lent et limité."},
+    {q:"Combien de temps avant l'entraînement faut-il manger ?", kw:["manger avant entrainement","repas avant seance","combien de temps avant sport manger"],
+      a:"Un repas complet 2-3h avant l'entraînement est idéal pour digérer sans inconfort. Si tu manques de temps, une petite collation (banane, une poignée de fruits secs) 30-60 minutes avant peut suffire pour l'énergie."}
+  ];
+
+  function normalize(s){
+    return (s||'').toString().toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/[^a-z0-9\s]/g,' ')
+      .replace(/\s+/g,' ').trim();
+  }
+
+  function scoreItem(qNorm, qTokens, item){
+    let score=0;
+    item.kw.forEach(kw=>{
+      const kwNorm=normalize(kw);
+      if(qNorm.includes(kwNorm)) score+=3;
+      else{
+        const overlap=kwNorm.split(' ').filter(t=>t.length>2 && qTokens.includes(t)).length;
+        score+=overlap;
+      }
+    });
+    return score;
+  }
+
+  function answer(query){
+    const qNorm=normalize(query);
+    const qTokens=qNorm.split(' ').filter(Boolean);
+    let best=null, bestScore=0;
+    const scored=items.map(item=>({item, score:scoreItem(qNorm,qTokens,item)}));
+    scored.sort((a,b)=>b.score-a.score);
+    if(scored.length && scored[0].score>=2){
+      best=scored[0].item; bestScore=scored[0].score;
+    }
+    if(best){
+      return { matched:true, text:best.a, question:best.q };
+    }
+    const suggestions=scored.filter(s=>s.score>0).slice(0,3).map(s=>s.item.q);
+    return { matched:false, suggestions };
+  }
+
+  return { answer, count: items.length };
+})();
+
+/* =========================================================
+   FREE AI (OPTIONAL) — Google Gemini via a user-supplied free
+   API key (from aistudio.google.com). If no key is configured,
+   the Coach falls back to the offline FAQ database above, so
+   the app stays fully functional and free either way.
+   ========================================================= */
+const GEMINI_MODEL='gemini-2.0-flash';
+async function callGemini(apiKey, systemPrompt, history){
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const contents=history.map(m=>({ role: m.role==='assistant'?'model':'user', parts:[{text:m.content}] }));
+  const res=await fetch(url,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ system_instruction:{ parts:[{text:systemPrompt}] }, contents })
+  });
+  if(!res.ok) throw new Error('gemini-http-'+res.status);
+  const data=await res.json();
+  const cand=data.candidates && data.candidates[0];
+  const text=(cand && cand.content && cand.content.parts) ? cand.content.parts.map(p=>p.text||'').join('') : '';
+  if(!text.trim()) throw new Error('gemini-empty-response');
+  return text.trim();
+}
+
+/* =========================================================
+   COACH CHAT TAB
+   ========================================================= */
+function renderCoachTab(){
+  const c=State.chat;
+  const hasKey=!!(State.settings.geminiApiKey && State.settings.geminiApiKey.trim());
+  return `
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-head"><div><p class="card-title">Coach mode</p><p class="card-sub">${hasKey
+      ? 'Real AI replies via your free Google Gemini key.'
+      : `Free mode: answers come from a built-in fitness &amp; nutrition FAQ (${FAQ.count} topics). Add a free Gemini key below for real conversational AI.`}</p></div></div>
+    <div class="field">
+      <label>Google Gemini API key (optional, free — get one at aistudio.google.com)</label>
+      <div style="display:flex;gap:6px;">
+        <input type="password" id="settings-gemini-key" placeholder="Paste your free Gemini API key…" value="${Utils.esc(State.settings.geminiApiKey||'')}"/>
+        <button class="btn secondary" id="settings-gemini-save">Save</button>
+        ${hasKey ? `<button class="btn secondary" id="settings-gemini-clear">Remove</button>` : ''}
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div><p class="card-title">Coach</p><p class="card-sub">Ask about your nutrition, training, or today's log</p></div></div>
+    <div class="chat-shell">
+      <div class="chat-body" id="chat-body">
+        ${c.messages.length ? c.messages.map(m=>`<div class="msg ${m.role==='user'?'user':'assistant'}">${Utils.esc(m.content)}</div>`).join('')
+          : `<div class="msg system-note">Ask me anything — e.g. "How am I tracking against my goals today?"</div>`}
+        ${c.sending ? `<div class="typing">Coach is typing…</div>` : ''}
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Message your coach…" ${c.sending?'disabled':''}/>
+        <button class="btn accent" id="chat-send" ${c.sending?'disabled':''}>Send</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function sendChatMessage(text){
+  text=(text||'').trim();
+  if(!text || State.chat.sending) return;
+  State.chat.messages.push({role:'user', content:text});
+  State.chat.sending=true;
+  await rerenderCoach();
+
+  const apiKey=(State.settings.geminiApiKey||'').trim();
+
+  try{
+    if(apiKey){
+      const dateKey=Utils.dateKey(State.currentDate);
+      const [entries, water] = await Promise.all([DayLog.get(dateKey), WaterLog.get(dateKey)]);
+      const totals=Calc.totals(entries);
+      const goals=State.profile.goals;
+      const sys = `You are a friendly, concise fitness & nutrition coach inside an app called PULSE. `
+        + `User profile: ${JSON.stringify(State.profile)}. `
+        + `Today's totals: ${JSON.stringify(totals)}. Water: ${water.ml}ml of ${goals.waterMl}ml goal. `
+        + `Give short, practical, encouraging answers (a few sentences). Never claim to be a medical professional; `
+        + `suggest consulting a doctor or dietitian for medical concerns.`;
+      const history = State.chat.messages.slice(-10).map(m=>({role:m.role, content:m.content}));
+      const reply = await callGemini(apiKey, sys, history);
+      State.chat.messages.push({role:'assistant', content:reply});
+    } else {
+      // Free fallback: no external AI key configured — answer from the offline FAQ database.
+      const result=FAQ.answer(text);
+      let reply;
+      if(result.matched){
+        reply=result.text;
+      } else if(result.suggestions.length){
+        reply=`Je n'ai pas de réponse toute faite pour ça dans ma FAQ gratuite. Sujets proches : ${result.suggestions.join(' · ')}\n\nAjoute une clé Gemini gratuite ci-dessus pour des réponses libres sur n'importe quel sujet.`;
+      } else {
+        reply=`Je n'ai pas de réponse pour ça dans ma FAQ gratuite (${FAQ.count} sujets fitness/nutrition). Ajoute une clé Gemini gratuite ci-dessus (aistudio.google.com) pour des réponses libres sur n'importe quel sujet.`;
+      }
+      State.chat.messages.push({role:'assistant', content:reply});
+    }
+  }catch(err){
+    console.error('Coach chat error', err);
+    const msg = apiKey
+      ? "I couldn't reach Gemini just now (check your API key/quota). Please try again in a moment."
+      : "Something went wrong looking that up. Please try again.";
+    State.chat.messages.push({role:'assistant', content:msg});
+  }finally{
+    State.chat.sending=false;
+    await rerenderCoach();
+  }
+}
+
+async function rerenderCoach(){
+  if(State.activeTab!=='coach') return;
+  const app=document.getElementById('app');
+  const dateKey=Utils.dateKey(State.currentDate);
+  const [entries, workout, water, weightHistory] = await Promise.all([DayLog.get(dateKey), WorkoutLog.get(dateKey), WaterLog.get(dateKey), WeightLog.getAll()]);
+  const weekTotals=await getWeekCalories(State.currentDate);
+  app.innerHTML = renderShell(dateKey, entries, workout, water, weekTotals, weightHistory);
+  wireShell(dateKey, entries, workout, water, weightHistory);
+  const body=document.getElementById('chat-body');
+  if(body) body.scrollTop=body.scrollHeight;
+}
+
+/* =========================================================
+   EVENT WIRING
+   ========================================================= */
+function wireShell(dateKey, entries, workout, water, weightHistory){
+  document.querySelectorAll('nav.tabs button[data-tab]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      State.activeTab=btn.dataset.tab;
+      State.addPanel.open=false;
+      await render();
+      if(State.activeTab==='workout'){
+        const prEl=document.getElementById('pr-list');
+        if(prEl) renderPRListInto(prEl);
+      }
+      if(State.activeTab==='coach'){
+        const body=document.getElementById('chat-body');
+        if(body) body.scrollTop=body.scrollHeight;
+      }
+    });
+  });
+
+  const resetBtn=document.getElementById('btn-reset');
+  if(resetBtn) resetBtn.addEventListener('click', async ()=>{
+    if(confirm('Edit your profile? This will take you back to setup (your logs are kept).')){
+      Object.assign(setupDraft, State.profile);
+      State.profile=null;
+      await render();
+    }
+  });
+
+  const prevBtn=document.getElementById('date-prev');
+  if(prevBtn) prevBtn.addEventListener('click', async ()=>{ State.currentDate=Utils.addDays(State.currentDate,-1); State.addPanel.open=false; await render(); });
+  const nextBtn=document.getElementById('date-next');
+  if(nextBtn) nextBtn.addEventListener('click', async ()=>{ State.currentDate=Utils.addDays(State.currentDate,1); State.addPanel.open=false; await render(); });
+  const todayBtn=document.getElementById('date-today');
+  if(todayBtn) todayBtn.addEventListener('click', async ()=>{ State.currentDate=new Date(); State.addPanel.open=false; await render(); });
+
+  if(State.activeTab==='today') wireTodayTab(dateKey, entries, water);
+  if(State.activeTab==='workout'){ wireWorkoutTab(dateKey, workout); const prEl=document.getElementById('pr-list'); if(prEl) renderPRListInto(prEl); renderComparisonsInto(dateKey, workout.entries); }
+  if(State.activeTab==='progress') wireProgressTab(weightHistory);
+  if(State.activeTab==='coach') wireCoachTab();
+}
+
+function wireProgressTab(weightHistory){
+  const wEl=document.getElementById('pg-weight');
+  if(wEl) wEl.addEventListener('input', (e)=>{ State.progressDraft.weightKg=e.target.value; });
+  const fEl=document.getElementById('pg-bodyfat');
+  if(fEl) fEl.addEventListener('input', (e)=>{ State.progressDraft.bodyFatPct=e.target.value; });
+
+  const saveBtn=document.getElementById('pg-save');
+  if(saveBtn) saveBtn.addEventListener('click', async ()=>{
+    const draft=State.progressDraft;
+    if((draft.weightKg===''||draft.weightKg==null) && (draft.bodyFatPct===''||draft.bodyFatPct==null)){
+      showToast('Enter a weight or body fat % first');
+      return;
+    }
+    const todayKey=Utils.dateKey(new Date());
+    await WeightLog.upsert(todayKey, draft.weightKg, draft.bodyFatPct);
+    State.progressDraft={ weightKg:'', bodyFatPct:'' };
+    showToast('Progress logged');
+    await render();
+  });
+
+  document.querySelectorAll('[data-del-weight]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      await WeightLog.remove(btn.dataset.delWeight);
+      showToast('Entry removed');
+      await render();
+    });
+  });
+}
+
+function wireTodayTab(dateKey, entries, water){
+  document.querySelectorAll('[data-water]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const delta=Utils.num(btn.dataset.water);
+      const newMl=Utils.clamp(water.ml+delta,0,15000);
+      await WaterLog.set(dateKey, newMl);
+      showToast(delta>0?`+${delta} ml logged`:`${delta} ml removed`);
+      await render();
+    });
+  });
+
+  document.querySelectorAll('[data-open-add]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const meal=btn.dataset.openAdd;
+      if(State.addPanel.open && State.addPanel.meal===meal){
+        State.addPanel.open=false;
+      } else {
+        State.addPanel={ open:true, meal, mode:'search', query:'', selected:null, pickedFood:null, qty:'1', unit:'serving',
+                          manual:{name:'',calories:'',protein:'',carbs:'',fat:''},
+                          webStatus:'idle', webResults:[], webQueriedFor:null, barcode:'', barcodeStatus:'idle' };
+      }
+      await render();
+    });
+  });
+
+  document.querySelectorAll('[data-del-entry]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.delEntry;
+      const updated=entries.filter(e=>e.id!==id);
+      await DayLog.set(dateKey, updated);
+      showToast('Removed from log');
+      await render();
+    });
+  });
+
+  wireAddPanel(dateKey, entries);
+}
+
+function wireAddPanel(dateKey, entries){
+  const ap=State.addPanel;
+  if(!ap.open) return;
+
+  document.querySelectorAll('[data-apmode]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      ap.mode=btn.dataset.apmode; ap.selected=null; ap.pickedFood=null;
+      await render();
+    });
+  });
+
+  const searchInput=document.getElementById('ap-search');
+  if(searchInput){
+    searchInput.focus();
+    searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+    searchInput.addEventListener('input', Utils.debounce(async (e)=>{
+      ap.query=e.target.value;
+      ap.webResults=[]; ap.webQueriedFor=null; ap.webStatus='idle';
+      await render();
+    }, 180));
+  }
+
+  function pickFood(food){
+    ap.pickedFood=food;
+    const d=defaultQtyUnitFor(food);
+    ap.selected={ name: food.name, qty:d.qty, unit:d.unit };
+  }
+
+  document.querySelectorAll('[data-pick-food]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const name=btn.dataset.pickFood;
+      const food=FoodDB.findByName(name) || { name, per100:{cal:0,protein:0,carbs:0,fat:0}, units:{}, source:'db' };
+      pickFood(food);
+      await render();
+    });
+  });
+
+  document.querySelectorAll('[data-pick-web]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const food=ap.webResults[Utils.num(btn.dataset.pickWeb)];
+      if(!food) return;
+      pickFood(food);
+      await render();
+    });
+  });
+
+  const webSearchBtn=document.getElementById('ap-web-search') || document.getElementById('ap-web-retry');
+  if(webSearchBtn){
+    webSearchBtn.addEventListener('click', async ()=>{
+      const q=ap.query.trim();
+      if(!q) return;
+      ap.webStatus='loading'; ap.webQueriedFor=q;
+      await render();
+      try{
+        const results=await OFF.searchByName(q, 15);
+        ap.webResults=results; ap.webStatus='done';
+      }catch(err){
+        console.error('Open Food Facts search error', err);
+        ap.webStatus='error';
+      }
+      await render();
+    });
+  }
+
+  async function doBarcodeLookup(codeArg){
+    const code=(codeArg!=null ? codeArg : ap.barcode).trim();
+    if(!code) return;
+    ap.barcode=code;
+    ap.barcodeStatus='loading';
+    await render();
+    try{
+      const food=await OFF.lookupBarcode(code);
+      if(food){
+        pickFood(food);
+        ap.barcodeStatus='idle';
+      } else {
+        ap.barcodeStatus='notfound';
+      }
+    }catch(err){
+      console.error('Open Food Facts barcode error', err);
+      ap.barcodeStatus='error';
+    }
+    await render();
+  }
+
+  const barcodeInput=document.getElementById('ap-barcode');
+  if(barcodeInput) barcodeInput.addEventListener('input', (e)=>{ ap.barcode=e.target.value; });
+  const barcodeGo=document.getElementById('ap-barcode-go');
+  if(barcodeGo) barcodeGo.addEventListener('click', ()=>doBarcodeLookup());
+  if(barcodeInput) barcodeInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') doBarcodeLookup(); });
+
+  const barcodeScanBtn=document.getElementById('ap-barcode-scan');
+  if(barcodeScanBtn) barcodeScanBtn.addEventListener('click', ()=>{
+    BarcodeScanner.open((code)=>{ doBarcodeLookup(code); });
+  });
+
+  const qtyEl=document.getElementById('ap-qty');
+  if(qtyEl) qtyEl.addEventListener('input', (e)=>{ if(ap.selected) ap.selected.qty=e.target.value; refreshSelectedPreview(); });
+  const unitEl=document.getElementById('ap-unit');
+  if(unitEl) unitEl.addEventListener('change', async (e)=>{ if(ap.selected) ap.selected.unit=e.target.value; await render(); });
+
+  const clearSel=document.getElementById('ap-clear-select');
+  if(clearSel) clearSel.addEventListener('click', async ()=>{ ap.selected=null; ap.pickedFood=null; await render(); });
+
+  const confirmAdd=document.getElementById('ap-confirm-add');
+  if(confirmAdd) confirmAdd.addEventListener('click', async ()=>{
+    const food=ap.pickedFood;
+    if(!food) return;
+    const m=FoodDB.macrosFor(food, ap.selected.qty, ap.selected.unit);
+    const entry={
+      id:Utils.uid('food'), mealType:ap.meal, name:food.name, quantity:Utils.num(ap.selected.qty,1), unit:ap.selected.unit,
+      calories:m.calories, protein:m.protein, carbs:m.carbs, fat:m.fat,
+      source:food.source||'db', sourceLabel:food.sourceLabel||'Food database'
+    };
+    const updated=entries.concat([entry]);
+    await DayLog.set(dateKey, updated);
+    showToast(`Added ${food.name}`);
+    State.addPanel.open=false;
+    await render();
+  });
+
+  // manual entry
+  ['ap-mname','ap-mcal','ap-mprotein','ap-mcarbs','ap-mfat'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', (e)=>{
+      const map={'ap-mname':'name','ap-mcal':'calories','ap-mprotein':'protein','ap-mcarbs':'carbs','ap-mfat':'fat'};
+      ap.manual[map[id]]=e.target.value;
+    });
+  });
+  const manualAdd=document.getElementById('ap-manual-add');
+  if(manualAdd) manualAdd.addEventListener('click', async ()=>{
+    const m=ap.manual;
+    if(!m.name.trim()){ showToast('Enter a food name'); return; }
+    const entry={
+      id:Utils.uid('food'), mealType:ap.meal, name:m.name.trim(), quantity:1, unit:'serving',
+      calories:Utils.num(m.calories), protein:Utils.num(m.protein), carbs:Utils.num(m.carbs), fat:Utils.num(m.fat),
+      source:'manual', sourceLabel:'Manual entry'
+    };
+    const updated=entries.concat([entry]);
+    await DayLog.set(dateKey, updated);
+    showToast(`Added ${entry.name}`);
+    State.addPanel.open=false;
+    await render();
+  });
+}
+
+function refreshSelectedPreview(){
+  // Lightweight re-render of just the selected-food row without losing search focus elsewhere
+  const ap=State.addPanel;
+  if(!ap.selected || !ap.pickedFood) return;
+  const container=document.querySelector('.add-panel');
+  if(!container) return;
+  const rows=container.querySelectorAll('.result-row');
+  if(rows.length){
+    const m=FoodDB.macrosFor(ap.pickedFood, ap.selected.qty, ap.selected.unit);
+    const massUnit = ap.pickedFood.isLiquid ? 'ml' : 'g';
+    const metaEl=rows[0].querySelector('.result-meta');
+    if(metaEl) metaEl.textContent = `${m.calories} kcal · P${m.protein} C${m.carbs} F${m.fat} (${m.grams}${massUnit})`;
+  }
+}
+
+function wireWorkoutTab(dateKey, workout){
+  const addExBtn=document.getElementById('wk-add-exercise');
+  const exInput=document.getElementById('wk-exname');
+  if(exInput && document.activeElement!==exInput && State.workoutInput.suggestions.length){
+    exInput.focus();
+    exInput.setSelectionRange(exInput.value.length, exInput.value.length);
+  }
+  async function addExercise(name){
+    name=(name!=null?name:(exInput.value||'')).trim();
+    if(!name){ showToast('Enter an exercise name'); return; }
+    const category=State.workoutInput.category||'strength';
+    const updated={ entries: workout.entries.concat([{ id:Utils.uid('ex'), exerciseName:name, category, sets:[] }]) };
+    await WorkoutLog.set(dateKey, updated);
+    State.workoutInput.exerciseName='';
+    State.workoutInput.suggestions=[];
+    showToast(`Added ${name}`);
+    await render();
+  }
+  if(addExBtn) addExBtn.addEventListener('click', ()=>addExercise());
+  if(exInput) exInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addExercise(); if(e.key==='Escape'){ State.workoutInput.suggestions=[]; render(); } });
+  if(exInput) exInput.addEventListener('input', Utils.debounce((e)=>{
+    State.workoutInput.exerciseName=e.target.value;
+    State.workoutInput.suggestions=ExerciseDB.search(e.target.value, 6);
+    render();
+  }, 150));
+
+  document.querySelectorAll('[data-pick-exercise]').forEach(btn=>{
+    btn.addEventListener('click', ()=>addExercise(btn.dataset.pickExercise));
+  });
+
+  const syncBtn=document.getElementById('ex-sync-btn');
+  if(syncBtn) syncBtn.addEventListener('click', async ()=>{
+    State.exerciseSync={ status:'syncing', count:0, syncedAt:null };
+    await render();
+    try{
+      const result=await ExerciseDB.sync((loaded)=>{
+        State.exerciseSync={ status:'syncing', count:loaded, syncedAt:null };
+        const statusEl=document.querySelector('.status-line');
+        if(statusEl) statusEl.innerHTML=renderExerciseSyncStatus();
+      });
+      State.exerciseSync={ status:'done', count:result.items.length, syncedAt:result.syncedAt };
+      showToast(`Synced ${result.items.length} exercises`);
+    }catch(err){
+      console.error('wger sync error', err);
+      State.exerciseSync={ status:'error', count:0, syncedAt:null };
+      showToast('Exercise sync failed — check your connection');
+    }
+    await render();
+  });
+
+  const catSeg=document.getElementById('wk-category');
+  if(catSeg) catSeg.addEventListener('click', async (e)=>{
+    const b=e.target.closest('button[data-cat]'); if(!b) return;
+    State.workoutInput.category=b.dataset.cat;
+    await render();
+  });
+
+  document.querySelectorAll('[data-cardio-preset]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const label=btn.dataset.cardioPreset;
+      State.workoutInput.exerciseName=label;
+      const nameInput=document.getElementById('wk-exname');
+      if(nameInput){ nameInput.value=label; nameInput.focus(); }
+    });
+  });
+
+  document.querySelectorAll('[data-del-exercise]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.delExercise;
+      const updated={ entries: workout.entries.filter(ex=>ex.id!==id) };
+      await WorkoutLog.set(dateKey, updated);
+      await render();
+      const prEl=document.getElementById('pr-list'); if(prEl) renderPRListInto(prEl);
+    });
+  });
+
+  document.querySelectorAll('[data-del-set]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const [exId, setId]=btn.dataset.delSet.split('|');
+      const updated={ entries: workout.entries.map(ex=> ex.id!==exId ? ex : {...ex, sets:ex.sets.filter(s=>s.id!==setId)}) };
+      await WorkoutLog.set(dateKey, updated);
+      await render();
+      const prEl=document.getElementById('pr-list'); if(prEl) renderPRListInto(prEl);
+    });
+  });
+
+  document.querySelectorAll('[data-add-set]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const exId=btn.dataset.addSet;
+      const exerciseEl=document.querySelector(`.exercise[data-exercise-id="${exId}"]`);
+      const isCardio=exerciseEl.dataset.category==='cardio';
+      let newSet;
+      if(isCardio){
+        const distance=exerciseEl.querySelector('[data-field="distance"]').value;
+        const duration=exerciseEl.querySelector('[data-field="duration"]').value;
+        if(distance===''&&duration===''){ showToast('Enter a distance and/or time'); return; }
+        newSet={ id:Utils.uid('set'), reps:null, weight:null, weightUnit:'lb',
+          distanceKm: distance!==''?Utils.num(distance):null,
+          durationSec: duration!==''?Utils.num(duration)*60:null, notes:'' };
+      } else {
+        const reps=exerciseEl.querySelector('[data-field="reps"]').value;
+        const weight=exerciseEl.querySelector('[data-field="weight"]').value;
+        const weightUnit=exerciseEl.querySelector('[data-field="weightUnit"]').value;
+        if(reps===''&&weight===''){ showToast('Enter reps and/or weight'); return; }
+        newSet={ id:Utils.uid('set'), reps: reps!==''?Utils.num(reps):null, weight: weight!==''?Utils.num(weight):null, weightUnit, distanceKm:null, durationSec:null, notes:'' };
+      }
+      const updated={ entries: workout.entries.map(ex=> ex.id!==exId ? ex : {...ex, sets:ex.sets.concat([newSet])}) };
+      await WorkoutLog.set(dateKey, updated);
+      await render();
+      const prEl=document.getElementById('pr-list'); if(prEl) renderPRListInto(prEl);
+    });
+  });
+}
+
+function wireCoachTab(){
+  const input=document.getElementById('chat-input');
+  const sendBtn=document.getElementById('chat-send');
+  const body=document.getElementById('chat-body');
+  if(body) body.scrollTop=body.scrollHeight;
+  async function doSend(){
+    const text=input.value;
+    input.value='';
+    await sendChatMessage(text);
+  }
+  if(sendBtn) sendBtn.addEventListener('click', doSend);
+  if(input) input.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !State.chat.sending) doSend(); });
+
+  const keyInput=document.getElementById('settings-gemini-key');
+  const saveBtn=document.getElementById('settings-gemini-save');
+  if(saveBtn) saveBtn.addEventListener('click', async ()=>{
+    const key=(keyInput.value||'').trim();
+    State.settings.geminiApiKey=key;
+    await Store.set('settings', State.settings);
+    showToast(key ? 'Gemini key saved — AI mode active' : 'Key cleared — using free FAQ mode');
+    await render();
+  });
+  const clearBtn=document.getElementById('settings-gemini-clear');
+  if(clearBtn) clearBtn.addEventListener('click', async ()=>{
+    State.settings.geminiApiKey='';
+    await Store.set('settings', State.settings);
+    showToast('Key removed — using free FAQ mode');
+    await render();
+  });
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+boot();
+
+})();
+</script>
+</body>
+</html>
