@@ -214,6 +214,7 @@
   .exercise-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
   .exercise-head .en{font-weight:700;font-size:14px;}
   .exercise-head .em{font-size:11px;color:var(--ink-soft);}
+  .ex-suggestion{font-size:11.5px;color:var(--accent2);font-weight:600;margin-top:3px;}
   .sets{display:flex;flex-direction:column;gap:5px;margin-bottom:8px;}
   .setrow{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:6px 9px;}
   .setrow .sn{color:var(--ink-faint);font-size:11px;width:16px;}
@@ -568,6 +569,29 @@ const WeightLog = {
     await Store.set('weightlog', updated);
     return updated;
   }
+};
+
+/* =========================================================
+   SAVED MEALS — named bundles of food entries (e.g. "Greek
+   yogurt + raspberries + protein powder") the user logs
+   often, so re-adding the whole thing is one tap instead of
+   re-searching each component every time.
+   ========================================================= */
+function sanitizeSavedMeals(arr){
+  return Array.isArray(arr) ? arr.filter(m=>m && typeof m==='object' && typeof m.name==='string' && Array.isArray(m.items)).map(m=>({
+    id: m.id || Utils.uid('meal'),
+    name: m.name,
+    items: m.items.filter(isValidEntry).map(e=>({
+      name:e.name, quantity:Utils.num(e.quantity,1), unit:e.unit||'serving',
+      calories:Utils.num(e.calories), protein:Utils.num(e.protein), carbs:Utils.num(e.carbs), fat:Utils.num(e.fat),
+      source:e.source||'manual', sourceLabel:e.sourceLabel||''
+    })),
+    createdAt: m.createdAt || Date.now()
+  })) : [];
+}
+const SavedMeals = {
+  async getAll(){ return sanitizeSavedMeals(await Store.get('saved_meals', [])); },
+  async set(all){ const clean=sanitizeSavedMeals(all); await Store.set('saved_meals', clean); return clean; }
 };
 
 /* =========================================================
@@ -1374,7 +1398,9 @@ const State = {
   setInputs:{}, // exId -> {reps,weight,weightUnit}
   chat:{ messages:[], sending:false },
   settings:{ geminiApiKey:'' },
-  progressDraft:{ weightKg:'', bodyFatPct:'' }
+  progressDraft:{ weightKg:'', bodyFatPct:'' },
+  savedMeals:[],
+  saveMealDraft:{ open:false, mealType:null, name:'' }
 };
 
 function showToast(msg){
@@ -1395,6 +1421,7 @@ async function boot(){
   if(savedSettings) State.settings = Object.assign({geminiApiKey:''}, savedSettings);
   const exStatus = await ExerciseDB.status();
   State.exerciseSync = { status: exStatus.synced?'done':'idle', count: exStatus.count, syncedAt: exStatus.syncedAt };
+  State.savedMeals = await SavedMeals.getAll();
   await render();
 }
 
@@ -1580,8 +1607,15 @@ function renderShell(dateKey, entries, workout, water, weekTotals, weightHistory
   `;
 }
 
+function weekAvgCalories(weekTotals){
+  const logged=weekTotals.filter(w=>w.cal>0);
+  if(!logged.length) return null;
+  return { avg: logged.reduce((s,w)=>s+w.cal,0)/logged.length, days: logged.length };
+}
+
 function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxWeekCal, dow){
   const calPct = goals.calories>0 ? totals.calories/goals.calories : 0;
+  const weekAvg=weekAvgCalories(weekTotals);
   const macros=[
     {key:'protein', label:'Protein', color:'var(--protein)', val:totals.protein, goal:goals.protein},
     {key:'carbs', label:'Carbs', color:'var(--carbs)', val:totals.carbs, goal:goals.carbs},
@@ -1632,6 +1666,7 @@ function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxW
             return `<div class="col ${active?'active':''}"><div class="bar" style="height:${h}%"></div><div class="dow">${dow[w.date.getDay()]}</div></div>`;
           }).join('')}
         </div>
+        ${weekAvg ? `<p class="card-sub" style="margin-top:8px;">7-day avg: <strong style="color:var(--ink);">${Utils.roundInt(weekAvg.avg)} kcal</strong> (over ${weekAvg.days} logged day${weekAvg.days===1?'':'s'}) — steadier signal than a single day for tracking your real trend.</p>` : ''}
       </div>
 
       <div class="card water-card">
@@ -1660,6 +1695,8 @@ function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxW
 function renderMealBlock(mealType, mealEntries){
   const cal=Calc.totals(mealEntries).calories;
   const isOpen = State.addPanel.open && State.addPanel.meal===mealType.id;
+  const smd=State.saveMealDraft;
+  const isSaving = smd.open && smd.mealType===mealType.id;
   return `
   <div class="meal-block" data-meal-block="${mealType.id}">
     <div class="meal-head">
@@ -1670,6 +1707,15 @@ function renderMealBlock(mealType, mealEntries){
       </div>
     </div>
     ${mealEntries.length ? mealEntries.map(e=>renderEntryRow(e)).join('') : `<div class="empty">No foods logged yet</div>`}
+    ${mealEntries.length ? `<div style="margin-top:6px;">${isSaving ? '' : `<button class="link-btn" data-save-meal="${mealType.id}">💾 Save as meal</button>`}</div>` : ''}
+    ${isSaving ? `
+      <div class="add-panel">
+        <div class="field"><label>Name this meal</label><input type="text" id="savemeal-name" value="${Utils.esc(smd.name)}" placeholder="e.g. Greek yogurt + raspberries"/></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn accent" id="savemeal-confirm">Save</button>
+          <button class="btn secondary" id="savemeal-cancel">Cancel</button>
+        </div>
+      </div>` : ''}
     ${isOpen ? renderAddPanel() : ''}
   </div>`;
 }
@@ -1751,7 +1797,7 @@ function renderAddPanel(){
         ${renderBarcodeBlock()}
       `}
     `;
-  } else {
+  } else if(mode==='manual'){
     const m=ap.manual;
     body = `
       <div class="field"><label>Food name</label><input type="text" id="ap-mname" value="${Utils.esc(m.name)}" placeholder="e.g. Homemade smoothie"/></div>
@@ -1765,15 +1811,39 @@ function renderAddPanel(){
       </div>
       <button class="btn accent" id="ap-manual-add">Add to log</button>
     `;
+  } else {
+    body = renderSavedMealsBody();
   }
   return `
   <div class="add-panel">
     <div class="subtabs">
       <button data-apmode="search" class="${mode==='search'?'active':''}">Search database</button>
       <button data-apmode="manual" class="${mode==='manual'?'active':''}">Manual entry</button>
+      <button data-apmode="saved" class="${mode==='saved'?'active':''}">Saved meals</button>
     </div>
     ${body}
   </div>`;
+}
+
+function renderSavedMealsBody(){
+  const meals=State.savedMeals||[];
+  if(!meals.length) return `<div class="status-line">No saved meals yet — log a meal normally, then tap "💾 Save as meal" under it to reuse it here in one tap next time.</div>`;
+  return meals.map(m=>{
+    const totals=m.items.reduce((acc,i)=>({
+      calories:acc.calories+i.calories, protein:acc.protein+i.protein, carbs:acc.carbs+i.carbs, fat:acc.fat+i.fat
+    }),{calories:0,protein:0,carbs:0,fat:0});
+    return `
+    <div class="result-row">
+      <div>
+        <div class="result-name">${Utils.esc(m.name)}</div>
+        <div class="result-meta">${Utils.roundInt(totals.calories)} kcal · P${Utils.roundInt(totals.protein)} C${Utils.roundInt(totals.carbs)} F${Utils.roundInt(totals.fat)} · ${m.items.length} item${m.items.length===1?'':'s'}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn accent" data-use-saved-meal="${m.id}">Add</button>
+        <button class="del" data-del-saved-meal="${m.id}" title="Delete saved meal">×</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderSelectedFoodRow(sel){
@@ -1867,7 +1937,7 @@ function renderExercise(ex){
   return `
   <div class="exercise" data-exercise-id="${ex.id}" data-category="${isCardio?'cardio':'strength'}">
     <div class="exercise-head">
-      <div><div class="en">${Utils.esc(ex.exerciseName)}</div><div class="em">${ex.sets.length} ${isCardio?(ex.sets.length===1?'session':'sessions'):(ex.sets.length===1?'set':'sets')}${bestLabel}<span class="cmp" id="cmp-${ex.id}"></span></div></div>
+      <div><div class="en">${Utils.esc(ex.exerciseName)}</div><div class="em">${ex.sets.length} ${isCardio?(ex.sets.length===1?'session':'sessions'):(ex.sets.length===1?'set':'sets')}${bestLabel}<span class="cmp" id="cmp-${ex.id}"></span></div>${isCardio?'':`<div class="ex-suggestion" id="sugg-${ex.id}"></div>`}</div>
       <button class="del" data-del-exercise="${ex.id}" title="Remove exercise">×</button>
     </div>
     <div class="sets">
@@ -1973,9 +2043,67 @@ async function renderComparisonsInto(dateKey, entries){
 }
 
 /* =========================================================
+   PROGRESSIVE OVERLOAD SUGGESTIONS — "try 62.5lb x 8 (last: 60lb x 8)"
+   using a simple, standard double-progression heuristic: once you
+   reach the top of a rep range, add weight and drop back down in
+   reps; otherwise, just add one more rep at the same weight.
+   ========================================================= */
+async function computeLastSessionBests(beforeDateKey){
+  const keys=await Store.list('workout:');
+  const prevMap={};
+  for(const key of keys){
+    const dk=key.slice('workout:'.length);
+    if(!Utils.isValidDateKey(dk) || dk>=beforeDateKey) continue;
+    const w=sanitizeWorkout(await Store.get(key, {entries:[]}));
+    w.entries.forEach(ex=>{
+      if(ex.category==='cardio') return;
+      const best=Calc.bestSetSummary(ex.sets);
+      if(!best) return;
+      const cur=prevMap[ex.exerciseName];
+      if(!cur || dk>cur.dateKey) prevMap[ex.exerciseName]={dateKey:dk, ...best};
+    });
+  }
+  return prevMap;
+}
+
+function suggestNextTarget(prevBest){
+  if(!prevBest || !prevBest.weight || !prevBest.reps) return null;
+  const unit=prevBest.weightUnit||'lb';
+  const increment = unit==='kg' ? 2.5 : 5;
+  const REP_CAP=10; // hit this many reps on the top set -> time to add weight
+  if(prevBest.reps>=REP_CAP){
+    return { weight:Utils.round(prevBest.weight+increment,1), reps:Math.max(6,prevBest.reps-2), weightUnit:unit, basis:prevBest };
+  }
+  return { weight:prevBest.weight, reps:prevBest.reps+1, weightUnit:unit, basis:prevBest };
+}
+
+async function renderSuggestionsInto(dateKey, entries){
+  if(!entries || !entries.length) return;
+  const prevMap=await computeLastSessionBests(dateKey);
+  entries.forEach(ex=>{
+    if(ex.category==='cardio') return;
+    const el=document.getElementById('sugg-'+ex.id);
+    if(!el) return;
+    const sugg=suggestNextTarget(prevMap[ex.exerciseName]);
+    el.textContent = sugg ? `💡 Try ${sugg.weight}${sugg.weightUnit} × ${sugg.reps} (last: ${sugg.basis.weight}${sugg.basis.weightUnit} × ${sugg.basis.reps})` : '';
+  });
+}
+
+/* =========================================================
    PROGRESS TAB — weight & body-fat tracking with trend charts
    ========================================================= */
-function trendChartSvg(points, color){
+// Trailing moving average over the last `window` logged points (index-based,
+// not calendar-based — since weight/bodyfat get at most one entry per day,
+// "last N logged entries" is a reasonable stand-in for "last N days" even
+// when there are gaps). Smooths out day-to-day noise like water retention.
+function movingAverage(points, window){
+  return points.map((p,i)=>{
+    const slice=points.slice(Math.max(0,i-window+1), i+1);
+    return { date:p.date, value: slice.reduce((s,q)=>s+q.value,0)/slice.length };
+  });
+}
+
+function trendChartSvg(points, color, avgPoints){
   // points: [{date:Date, value:number}], already filtered to non-null values, ascending by date
   const w=560, h=140, padX=14, padY=16;
   if(points.length===0){
@@ -1997,13 +2125,20 @@ function trendChartSvg(points, color){
   const areaPath=linePath+` L ${coords[coords.length-1].x.toFixed(1)} ${(h-padY).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(h-padY).toFixed(1)} Z`;
   const dots=coords.map((c,i)=>`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${i===coords.length-1?4.5:2.5}" fill="${color}"/>`).join('');
   const fmt=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  const showAvg = avgPoints && avgPoints.length===points.length && points.length>=4;
+  const avgLine = showAvg ? (()=>{
+    const avgCoords=avgPoints.map((p,i)=>({ x: padX+stepX*i, y: padY+(h-2*padY)*(1-(p.value-min)/range) }));
+    const path=avgCoords.map((c,i)=>(i===0?'M':'L')+c.x.toFixed(1)+' '+c.y.toFixed(1)).join(' ');
+    return `<path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.55"/>`;
+  })() : '';
   return `
     <svg class="trend-chart" viewBox="0 0 ${w} ${h}" width="100%" height="140" preserveAspectRatio="none">
       <path d="${areaPath}" fill="${color}" opacity="0.10" stroke="none"/>
+      ${avgLine}
       <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
       ${dots}
     </svg>
-    <div class="trend-dates"><span>${fmt(points[0].date)}</span><span>${fmt(points[points.length-1].date)}</span></div>
+    <div class="trend-dates"><span>${fmt(points[0].date)}</span><span>${showAvg?'— actual  ⋯ 7-entry avg':''}</span><span>${fmt(points[points.length-1].date)}</span></div>
   `;
 }
 
@@ -2024,6 +2159,17 @@ function statCard(label, unit, points, color, decimals){
     </div>`;
 }
 
+// Compares the current 7-entry rolling average to what it was 7 entries ago —
+// a much steadier "are you actually trending up/down" signal than the raw
+// day-to-day number, which bounces around with water weight/food in the gut.
+function avgTrendLabel(avgPoints, unit, decimals){
+  if(avgPoints.length<8) return '';
+  const cur=avgPoints[avgPoints.length-1].value;
+  const prev=avgPoints[avgPoints.length-8].value;
+  const delta=cur-prev;
+  return `7-entry avg: ${Utils.round(cur,decimals)}${unit} (${delta>0?'+':''}${Utils.round(delta,decimals)}${unit} vs a week of entries ago)`;
+}
+
 function renderProgressTab(weightHistory){
   const draft=State.progressDraft;
   const todayKey=Utils.dateKey(new Date());
@@ -2031,6 +2177,8 @@ function renderProgressTab(weightHistory){
 
   const weightPoints=weightHistory.filter(e=>e.weightKg!=null).map(e=>({date:Utils.parseDateKey(e.date), value:e.weightKg}));
   const fatPoints=weightHistory.filter(e=>e.bodyFatPct!=null).map(e=>({date:Utils.parseDateKey(e.date), value:e.bodyFatPct}));
+  const weightAvgPoints=movingAverage(weightPoints,7);
+  const fatAvgPoints=movingAverage(fatPoints,7);
 
   const recent=weightHistory.slice().sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:0).slice(0,14);
 
@@ -2063,12 +2211,12 @@ function renderProgressTab(weightHistory){
 
     <div class="grid two" style="margin-top:16px;">
       <div class="card">
-        <div class="card-head"><div><p class="card-title">Weight trend</p><p class="card-sub">All logged entries</p></div></div>
-        ${trendChartSvg(weightPoints, 'var(--accent)')}
+        <div class="card-head"><div><p class="card-title">Weight trend</p><p class="card-sub">${avgTrendLabel(weightAvgPoints,' kg',1) || 'All logged entries'}</p></div></div>
+        ${trendChartSvg(weightPoints, 'var(--accent)', weightAvgPoints)}
       </div>
       <div class="card">
-        <div class="card-head"><div><p class="card-title">Body fat trend</p><p class="card-sub">All logged entries</p></div></div>
-        ${trendChartSvg(fatPoints, 'var(--accent2)')}
+        <div class="card-head"><div><p class="card-title">Body fat trend</p><p class="card-sub">${avgTrendLabel(fatAvgPoints,'%',1) || 'All logged entries'}</p></div></div>
+        ${trendChartSvg(fatPoints, 'var(--accent2)', fatAvgPoints)}
       </div>
     </div>
 
@@ -2224,7 +2372,7 @@ const FAQ = (function(){
    the Coach falls back to the offline FAQ database above, so
    the app stays fully functional and free either way.
    ========================================================= */
-const GEMINI_MODEL='gemini-2.0-flash';
+const GEMINI_MODEL='gemini-3.8-flash'; // Google renames/retires models periodically (2.0-flash was shut down) — update this if the Coach starts failing again
 async function callGemini(apiKey, systemPrompt, history){
   const url=`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const contents=history.map(m=>({ role: m.role==='assistant'?'model':'user', parts:[{text:m.content}] }));
@@ -2232,7 +2380,13 @@ async function callGemini(apiKey, systemPrompt, history){
     method:'POST', headers:{'Content-Type':'application/json'},
     body:JSON.stringify({ system_instruction:{ parts:[{text:systemPrompt}] }, contents })
   });
-  if(!res.ok) throw new Error('gemini-http-'+res.status);
+  if(!res.ok){
+    let detail='';
+    try{ const errBody=await res.json(); detail=(errBody && errBody.error && errBody.error.message) || ''; }catch(e){}
+    const err=new Error('gemini-http-'+res.status+(detail?': '+detail:''));
+    err.httpStatus=res.status;
+    throw err;
+  }
   const data=await res.json();
   const cand=data.candidates && data.candidates[0];
   const text=(cand && cand.content && cand.content.parts) ? cand.content.parts.map(p=>p.text||'').join('') : '';
@@ -2314,9 +2468,16 @@ async function sendChatMessage(text){
     }
   }catch(err){
     console.error('Coach chat error', err);
-    const msg = apiKey
-      ? "I couldn't reach Gemini just now (check your API key/quota). Please try again in a moment."
-      : "Something went wrong looking that up. Please try again.";
+    let msg="Something went wrong looking that up. Please try again.";
+    if(apiKey){
+      const status=err && err.httpStatus;
+      const detail=((err && err.message)||'').toLowerCase();
+      if(detail.includes('api key')) msg="Gemini rejected your API key — double check it was copied correctly (no extra spaces), or generate a fresh one at aistudio.google.com.";
+      else if(detail.includes('model')) msg="Gemini rejected the model this app uses — Google renames/retires models periodically, so this app's Gemini model id likely needs updating.";
+      else if(status===429) msg="You've hit Gemini's free-tier rate limit for now — wait a minute and try again.";
+      else if(status===403) msg="Gemini refused this request (permission denied) — check that your API key is active at aistudio.google.com.";
+      else msg="I couldn't reach Gemini just now. Please try again in a moment.";
+    }
     State.chat.messages.push({role:'assistant', content:msg});
   }finally{
     State.chat.sending=false;
@@ -2373,7 +2534,7 @@ function wireShell(dateKey, entries, workout, water, weightHistory){
   if(todayBtn) todayBtn.addEventListener('click', async ()=>{ State.currentDate=new Date(); State.addPanel.open=false; await render(); });
 
   if(State.activeTab==='today') wireTodayTab(dateKey, entries, water);
-  if(State.activeTab==='workout'){ wireWorkoutTab(dateKey, workout); const prEl=document.getElementById('pr-list'); if(prEl) renderPRListInto(prEl); renderComparisonsInto(dateKey, workout.entries); }
+  if(State.activeTab==='workout'){ wireWorkoutTab(dateKey, workout); const prEl=document.getElementById('pr-list'); if(prEl) renderPRListInto(prEl); renderComparisonsInto(dateKey, workout.entries); renderSuggestionsInto(dateKey, workout.entries); }
   if(State.activeTab==='progress') wireProgressTab(weightHistory);
   if(State.activeTab==='coach') wireCoachTab();
 }
@@ -2442,6 +2603,43 @@ function wireTodayTab(dateKey, entries, water){
     });
   });
 
+  document.querySelectorAll('[data-save-meal]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      State.saveMealDraft={ open:true, mealType:btn.dataset.saveMeal, name:'' };
+      await render();
+    });
+  });
+
+  const smd=State.saveMealDraft;
+  if(smd.open){
+    const nameEl=document.getElementById('savemeal-name');
+    if(nameEl){
+      nameEl.focus();
+      nameEl.setSelectionRange(nameEl.value.length, nameEl.value.length);
+      nameEl.addEventListener('input', (e)=>{ smd.name=e.target.value; });
+      nameEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') document.getElementById('savemeal-confirm').click(); });
+    }
+    const cancelBtn=document.getElementById('savemeal-cancel');
+    if(cancelBtn) cancelBtn.addEventListener('click', async ()=>{
+      State.saveMealDraft={ open:false, mealType:null, name:'' };
+      await render();
+    });
+    const confirmBtn=document.getElementById('savemeal-confirm');
+    if(confirmBtn) confirmBtn.addEventListener('click', async ()=>{
+      const name=smd.name.trim();
+      if(!name){ showToast('Enter a name for this meal'); return; }
+      const items=entries.filter(e=>e.mealType===smd.mealType).map(e=>({
+        name:e.name, quantity:e.quantity, unit:e.unit, calories:e.calories, protein:e.protein, carbs:e.carbs, fat:e.fat,
+        source:e.source, sourceLabel:e.sourceLabel
+      }));
+      const all=(await SavedMeals.getAll()).concat([{ id:Utils.uid('meal'), name, items, createdAt:Date.now() }]);
+      State.savedMeals=await SavedMeals.set(all);
+      State.saveMealDraft={ open:false, mealType:null, name:'' };
+      showToast(`Saved "${name}"`);
+      await render();
+    });
+  }
+
   wireAddPanel(dateKey, entries);
 }
 
@@ -2452,6 +2650,28 @@ function wireAddPanel(dateKey, entries){
   document.querySelectorAll('[data-apmode]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       ap.mode=btn.dataset.apmode; ap.selected=null; ap.pickedFood=null;
+      await render();
+    });
+  });
+
+  document.querySelectorAll('[data-use-saved-meal]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const meal=State.savedMeals.find(m=>m.id===btn.dataset.useSavedMeal);
+      if(!meal) return;
+      const newEntries=meal.items.map(item=>({ id:Utils.uid('food'), mealType:ap.meal, ...item }));
+      const updated=entries.concat(newEntries);
+      await DayLog.set(dateKey, updated);
+      showToast(`Added "${meal.name}" (${meal.items.length} item${meal.items.length===1?'':'s'})`);
+      State.addPanel.open=false;
+      await render();
+    });
+  });
+
+  document.querySelectorAll('[data-del-saved-meal]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.delSavedMeal;
+      const updated=State.savedMeals.filter(m=>m.id!==id);
+      State.savedMeals=await SavedMeals.set(updated);
       await render();
     });
   });
