@@ -1259,6 +1259,19 @@ const ExerciseDB = (function(){
 const BarcodeScanner = (function(){
   let instance=null;
   let overlayEl=null;
+  let fileRegionEl=null;
+
+  // Retail product barcode formats (not QR) — restricting to these both speeds up
+  // decoding and avoids the library defaulting to QR-optimized detection, which
+  // otherwise struggles with the wide, thin 1D barcodes used on food packaging.
+  function barcodeFormats(){
+    return [
+      Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION, Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.ITF
+    ];
+  }
 
   function buildOverlay(){
     const el=document.createElement('div');
@@ -1267,7 +1280,7 @@ const BarcodeScanner = (function(){
       <div class="scanner-box">
         <h3>Scan a barcode</h3>
         <div class="scanner-video-region" id="scanner-video-region"></div>
-        <div class="scanner-hint">Point your camera at the product's barcode.</div>
+        <div class="scanner-hint">Hold the barcode flat, well-lit, filling the box, about 10-15cm from the camera. It can take a few seconds.</div>
         <div class="scanner-error" id="scanner-error" hidden></div>
         <button type="button" class="btn secondary scanner-close" id="scanner-cancel">Cancel</button>
       </div>`;
@@ -1290,10 +1303,16 @@ const BarcodeScanner = (function(){
     overlayEl=buildOverlay();
     document.getElementById('scanner-cancel').addEventListener('click', close);
     try{
-      instance=new Html5Qrcode('scanner-video-region');
+      instance=new Html5Qrcode('scanner-video-region', { formatsToSupport:barcodeFormats(), verbose:false });
       await instance.start(
-        { facingMode:'environment' },
-        { fps:10, qrbox:{ width:250, height:150 } },
+        { facingMode:{ ideal:'environment' } },
+        {
+          fps:10,
+          // Wide/short box matches a barcode's shape (vs. the square default meant for QR)
+          qrbox:{ width:280, height:120 },
+          aspectRatio:1.777,
+          videoConstraints:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:720 } }
+        },
         async (decodedText)=>{
           const code=decodedText;
           await close();
@@ -1316,7 +1335,28 @@ const BarcodeScanner = (function(){
     if(overlayEl){ overlayEl.remove(); overlayEl=null; }
   }
 
-  return { open, close };
+  // Decode a barcode from a still photo (e.g. from a phone's native camera app via
+  // <input type="file" accept="image/*" capture="environment">) instead of live
+  // video. Often more reliable than continuous scanning — the phone's own camera
+  // app handles focus/exposure before the photo is even taken.
+  async function scanFile(file){
+    if(typeof Html5Qrcode==='undefined') throw new Error('scanner-lib-not-loaded');
+    if(!fileRegionEl){
+      fileRegionEl=document.createElement('div');
+      fileRegionEl.id='photo-scan-region';
+      fileRegionEl.style.cssText='position:absolute;left:-99999px;top:-99999px;width:300px;height:300px;';
+      document.body.appendChild(fileRegionEl);
+    }
+    const fileInstance=new Html5Qrcode('photo-scan-region', { formatsToSupport:barcodeFormats(), verbose:false });
+    try{
+      const decodedText=await fileInstance.scanFile(file, false);
+      return decodedText;
+    } finally {
+      try{ fileInstance.clear(); }catch(e){}
+    }
+  }
+
+  return { open, close, scanFile };
 })();
 
 /* =========================================================
@@ -1679,9 +1719,15 @@ function renderBarcodeBlock(){
         <input type="text" inputmode="numeric" id="ap-barcode" placeholder="e.g. 3017620422003" value="${Utils.esc(ap.barcode)}"/>
         <button type="button" class="btn secondary" id="ap-barcode-go">Look up</button>
       </div>
-      <button type="button" class="btn accent" id="ap-barcode-scan" style="width:100%;margin-top:6px;">📷 Scan with camera</button>
+      <div class="row2" style="margin-top:6px;">
+        <button type="button" class="btn accent" id="ap-barcode-scan">📷 Scan with camera</button>
+        <button type="button" class="btn secondary" id="ap-barcode-photo-btn">📸 Take a photo instead</button>
+      </div>
+      <input type="file" accept="image/*" capture="environment" id="ap-barcode-photo-input" style="display:none;"/>
       <div class="status-line" style="padding-top:4px;">Camera scan needs this page loaded over https:// (or a local server) — it won't work when the file is opened directly from disk in most browsers.</div>
       ${ap.barcodeStatus==='loading' ? `<div class="status-line">Looking up barcode…</div>` : ''}
+      ${ap.barcodeStatus==='photo-decoding' ? `<div class="status-line">Reading barcode from photo…</div>` : ''}
+      ${ap.barcodeStatus==='photo-nobarcode' ? `<div class="status-line err">Couldn't find a barcode in that photo — try again with better lighting and the barcode filling more of the frame.</div>` : ''}
       ${ap.barcodeStatus==='notfound' ? `<div class="status-line err">No product found for that barcode.</div>` : ''}
       ${ap.barcodeStatus==='error' ? `<div class="status-line err">Open Food Facts unavailable right now.</div>` : ''}
     </div>`;
@@ -2494,6 +2540,26 @@ function wireAddPanel(dateKey, entries){
   if(barcodeScanBtn) barcodeScanBtn.addEventListener('click', ()=>{
     BarcodeScanner.open((code)=>{ doBarcodeLookup(code); });
   });
+
+  const barcodePhotoBtn=document.getElementById('ap-barcode-photo-btn');
+  const barcodePhotoInput=document.getElementById('ap-barcode-photo-input');
+  if(barcodePhotoBtn && barcodePhotoInput){
+    barcodePhotoBtn.addEventListener('click', ()=>{ barcodePhotoInput.value=''; barcodePhotoInput.click(); });
+    barcodePhotoInput.addEventListener('change', async (e)=>{
+      const file=e.target.files && e.target.files[0];
+      if(!file) return;
+      ap.barcodeStatus='photo-decoding';
+      await render();
+      try{
+        const code=await BarcodeScanner.scanFile(file);
+        await doBarcodeLookup(code);
+      }catch(err){
+        console.error('Photo barcode decode error', err);
+        ap.barcodeStatus='photo-nobarcode';
+        await render();
+      }
+    });
+  }
 
   const qtyEl=document.getElementById('ap-qty');
   if(qtyEl) qtyEl.addEventListener('input', (e)=>{ if(ap.selected) ap.selected.qty=e.target.value; refreshSelectedPreview(); });
