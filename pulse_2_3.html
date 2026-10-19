@@ -215,11 +215,12 @@
   .exercise-head .en{font-weight:700;font-size:14px;}
   .exercise-head .em{font-size:11px;color:var(--ink-soft);}
   .chip-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
-  .prog-templates{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
-  .prog-tpl{text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--radius-md);padding:10px 12px;}
-  .prog-tpl:hover{border-color:var(--accent2);}
-  .prog-tpl .fn,.ex-suggest-row .fn{display:block;font-weight:700;font-size:13px;}
-  .prog-tpl .fm{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .prog-list{display:flex;flex-direction:column;gap:8px;}
+  .prog-item{display:flex;align-items:center;gap:8px;}
+  .prog-open{flex:1;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--radius-md);padding:10px 12px;}
+  .prog-open:hover{border-color:var(--accent2);}
+  .prog-open .fn,.ex-suggest-row .fn{display:block;font-weight:700;font-size:13px;}
+  .prog-open .fm{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
   .prog-row{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);}
   .prog-row:last-child{border-bottom:none;}
   .fm{color:var(--ink-soft);font-size:12px;}
@@ -655,22 +656,6 @@ const Programs = {
   async getState(){ const st=await Store.get('program_state', null); return { activeId:(st&&st.activeId)||null, next:(st&&st.next)||{} }; },
   async setState(st){ await Store.set('program_state', st); return st; }
 };
-const PROGRAM_TEMPLATES=[
-  { key:'fullbody', name:'Full body A/B', desc:'2 séances qui alternent · idéal 3×/semaine pour débuter', days:[
-    ['Full body A',[['Squat',3,'5'],['Développé couché',3,'5'],['Rowing barre',3,'8'],['Développé militaire',2,'8'],['Curl biceps',2,'10-12']]],
-    ['Full body B',[['Soulevé de terre',3,'5'],['Développé incliné',3,'8'],['Tractions',3,'6-10'],['Fentes',3,'10'],['Extension triceps poulie',2,'10-12']]] ]},
-  { key:'ppl', name:'Push / Pull / Legs', desc:'3 séances · de 3 à 6×/semaine', days:[
-    ['Push',[['Développé couché',4,'6-8'],['Développé épaules haltères',3,'8-10'],['Développé incliné',3,'8-10'],['Élévations latérales',3,'12-15'],['Extension triceps poulie',3,'10-12']]],
-    ['Pull',[['Tractions',4,'6-10'],['Rowing barre',3,'8-10'],['Tirage horizontal',3,'10-12'],['Face pull',3,'15'],['Curl biceps',3,'10-12'],['Curl marteau',2,'12']]],
-    ['Legs',[['Squat',4,'6-8'],['Soulevé de terre roumain',3,'8-10'],['Presse à cuisses',3,'10-12'],['Leg curl',3,'12'],['Mollets debout',4,'12-15']]] ]},
-  { key:'upperlower', name:'Haut / Bas', desc:'2 séances · idéal 4×/semaine', days:[
-    ['Haut du corps',[['Développé couché',4,'6-8'],['Rowing barre',4,'8'],['Développé militaire',3,'8'],['Tirage vertical',3,'10'],['Curl biceps',2,'12'],['Extension triceps poulie',2,'12']]],
-    ['Bas du corps',[['Squat',4,'6-8'],['Soulevé de terre roumain',3,'8'],['Fentes bulgares',3,'10'],['Leg curl',3,'12'],['Mollets debout',3,'15'],['Gainage',3,'45 s']]] ]}
-];
-function programFromTemplate(t){
-  return { id:Utils.uid('prog'), name:t.name, days:t.days.map(([name,ex])=>({
-    id:Utils.uid('day'), name, exercises:ex.map(([n,sets,reps])=>({ name:n, sets, reps, category:'strength' })) })) };
-}
 
 /* =========================================================
    CALC
@@ -1582,6 +1567,7 @@ const State = {
   recentFoods:[],
   programs:[],
   programState:{ activeId:null, next:{} },
+  programOpenId:null,    // training opened from the list (null = list view)
   programDayPick:null,   // day chosen manually instead of the rotation's next day
   programEditor:null,    // draft program while creating/editing
   programEditorFocus:null
@@ -2149,10 +2135,9 @@ function renderSelectedFoodRow(sel){
 /* =========================================================
    WORKOUT TAB
    ========================================================= */
+// The training currently opened from the list (null = list view).
 function activeProgram(){
-  const progs=State.programs;
-  if(!progs.length) return null;
-  return progs.find(p=>p.id===State.programState.activeId) || progs[0];
+  return State.programs.find(p=>p.id===State.programOpenId) || null;
 }
 function programDayIndex(prog){
   if(!prog.days.length) return 0;
@@ -2162,32 +2147,35 @@ function programDayIndex(prog){
 
 function renderProgramCard(){
   if(State.programEditor) return renderProgramEditor();
-  if(!State.programs.length){
+  const prog=activeProgram();
+  if(!prog){
     return `
     <div class="card" style="margin-bottom:16px;">
-      <div class="card-head"><div><p class="card-title">Programme d'entraînement</p>
-        <p class="card-sub">Choisis un split, puis lance la séance du jour en un clic avec tes objectifs séries × reps.</p></div></div>
-      <div class="prog-templates">
-        ${PROGRAM_TEMPLATES.map(t=>`<button type="button" class="prog-tpl" data-prog-template="${t.key}">
-          <span class="fn">${Utils.esc(t.name)}</span><span class="fm">${Utils.esc(t.desc)}</span></button>`).join('')}
-        <button type="button" class="prog-tpl" data-prog-custom="1"><span class="fn">+ Personnalisé</span><span class="fm">Crée tes propres jours et exercices</span></button>
-      </div>
+      <div class="card-head"><div><p class="card-title">Mes trainings</p>
+        <p class="card-sub">Crée ton split, puis lance la séance du jour en un clic avec tes objectifs séries × reps.</p></div></div>
+      ${State.programs.length ? `<div class="prog-list">${State.programs.map(p=>{
+        const nx=p.days.length ? p.days[(State.programState.next[p.id]||0)%p.days.length] : null;
+        return `<div class="prog-item">
+          <button type="button" class="prog-open" data-prog-open="${p.id}">
+            <span class="fn">${Utils.esc(p.name)}</span>
+            <span class="fm">${p.days.length} jour${p.days.length>1?'s':''}${nx?` · prochaine : ${Utils.esc(nx.name)}`:''}</span>
+          </button>
+          <button type="button" class="del" data-prog-del="${p.id}" title="Supprimer ce training">×</button>
+        </div>`;}).join('')}</div>`
+        : `<div class="empty">Aucun training pour l'instant.</div>`}
+      <button class="btn accent" id="prog-new" style="width:100%;margin-top:10px;">+ Créer un training</button>
     </div>`;
   }
-  const prog=activeProgram();
   const di=programDayIndex(prog);
   const day=prog.days[di];
   const isNext=di===((State.programState.next[prog.id]||0) % prog.days.length);
   return `
   <div class="card" style="margin-bottom:16px;">
+    <button type="button" class="link-btn" id="prog-back" style="margin-bottom:8px;">← Retour à mes trainings</button>
     <div class="card-head">
       <div><p class="card-title">${Utils.esc(prog.name)}</p>
-        <p class="card-sub">${day ? `${isNext?'Prochaine séance':'Séance choisie'} : <strong>${Utils.esc(day.name)}</strong> · jour ${di+1}/${prog.days.length}` : 'Ce programme n’a aucun jour.'}</p></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-        ${State.programs.length>1 ? `<select id="prog-select" style="width:auto;">${State.programs.map(p=>`<option value="${p.id}" ${p.id===prog.id?'selected':''}>${Utils.esc(p.name)}</option>`).join('')}</select>` : ''}
-        <button class="btn secondary" id="prog-edit">Modifier</button>
-        <button class="btn secondary" id="prog-new">+ Nouveau</button>
-      </div>
+        <p class="card-sub">${day ? `${isNext?'Prochaine séance':'Séance choisie'} : <strong>${Utils.esc(day.name)}</strong> · jour ${di+1}/${prog.days.length}` : 'Ce training n’a aucun jour.'}</p></div>
+      <button class="btn secondary" id="prog-edit">Modifier</button>
     </div>
     <div class="water-btns" style="margin-bottom:10px;">
       ${prog.days.map((d,i)=>`<button type="button" class="chip-btn ${i===di?'active':''}" data-prog-day="${i}">${Utils.esc(d.name)}</button>`).join('')}
@@ -2205,9 +2193,10 @@ function renderProgramEditor(){
   const ed=State.programEditor;
   return `
   <div class="card" style="margin-bottom:16px;">
-    <div class="card-head"><div><p class="card-title">${ed.isNew?'Nouveau programme':'Modifier le programme'}</p>
+    <button type="button" class="link-btn" id="pe-cancel-top" style="margin-bottom:8px;">← Retour</button>
+    <div class="card-head"><div><p class="card-title">${ed.isNew?'Nouveau training':'Modifier le training'}</p>
       <p class="card-sub">Les jours s'enchaînent dans l'ordre (rotation), peu importe le jour de la semaine.</p></div></div>
-    <div class="field"><label>Nom du programme</label><input type="text" id="pe-name" maxlength="60" value="${Utils.esc(ed.name)}" placeholder="ex. Push / Pull / Legs"/></div>
+    <div class="field"><label>Nom du training</label><input type="text" id="pe-name" maxlength="60" value="${Utils.esc(ed.name)}" placeholder="ex. Push / Pull / Legs"/></div>
     ${ed.days.map((d,di)=>`
       <div class="pe-day">
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
@@ -3340,31 +3329,32 @@ async function saveProgramState(){ await Programs.setState(State.programState); 
 function wireProgramCard(){
   const on=(id,fn)=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', fn); };
 
-  document.querySelectorAll('[data-prog-template]').forEach(btn=>btn.addEventListener('click', async ()=>{
-    const t=PROGRAM_TEMPLATES.find(x=>x.key===btn.dataset.progTemplate);
-    if(!t) return;
-    const prog=programFromTemplate(t);
-    State.programs=await Programs.set(State.programs.concat([prog]));
-    State.programState.activeId=prog.id; State.programState.next[prog.id]=0; State.programDayPick=null;
-    await saveProgramState();
-    showToast(`Programme « ${t.name} » créé`);
-    await render();
-  }));
   const openEditor=async (prog)=>{
     State.programEditor = prog
       ? { ...JSON.parse(JSON.stringify(prog)), isNew:false }
       : { id:Utils.uid('prog'), name:'', days:[{ id:Utils.uid('day'), name:'Jour 1', exercises:[] }], isNew:true };
     await render();
   };
-  document.querySelectorAll('[data-prog-custom]').forEach(b=>b.addEventListener('click', ()=>openEditor(null)));
   on('prog-new', ()=>openEditor(null));
   on('prog-edit', ()=>openEditor(activeProgram()));
-
-  const sel=document.getElementById('prog-select');
-  if(sel) sel.addEventListener('change', async ()=>{
-    State.programState.activeId=sel.value; State.programDayPick=null;
-    await saveProgramState(); await render();
-  });
+  on('prog-back', async ()=>{ State.programOpenId=null; State.programDayPick=null; await render(); });
+  document.querySelectorAll('[data-prog-open]').forEach(btn=>btn.addEventListener('click', async ()=>{
+    State.programOpenId=btn.dataset.progOpen; State.programDayPick=null; await render();
+  }));
+  const deleteProgram=async (id)=>{
+    const prog=State.programs.find(p=>p.id===id); if(!prog) return false;
+    if(!confirm(`Supprimer le training « ${prog.name} » ? Tes séances déjà enregistrées sont conservées.`)) return false;
+    State.programs=await Programs.set(State.programs.filter(p=>p.id!==id));
+    delete State.programState.next[id];
+    if(State.programOpenId===id) State.programOpenId=null;
+    State.programDayPick=null;
+    await saveProgramState();
+    showToast('Training supprimé');
+    return true;
+  };
+  document.querySelectorAll('[data-prog-del]').forEach(btn=>btn.addEventListener('click', async ()=>{
+    if(await deleteProgram(btn.dataset.progDel)) await render();
+  }));
   document.querySelectorAll('[data-prog-day]').forEach(btn=>btn.addEventListener('click', async ()=>{
     State.programDayPick=Utils.num(btn.dataset.progDay); await render();
   }));
@@ -3431,30 +3421,24 @@ function wireProgramCard(){
     const di=Utils.num(b.dataset.peAddbtn); addTo(di, document.querySelector(`[data-pe-add="${di}"]`).value);
   }));
 
+  // Cancel goes back where the editor was opened from: the training itself, or the list for a new one.
   on('pe-cancel', async ()=>{ State.programEditor=null; await render(); });
+  on('pe-cancel-top', async ()=>{ State.programEditor=null; await render(); });
   on('pe-save', async ()=>{
     const name=(ed.name||'').trim();
-    if(!name){ showToast('Donne un nom au programme'); return; }
+    if(!name){ showToast('Donne un nom au training'); return; }
     ed.days.forEach((d,i)=>{ if(!d.name.trim()) d.name=`Jour ${i+1}`; });
     const prog={ id:ed.id, name, days:ed.days };
     const exists=State.programs.some(p=>p.id===prog.id);
     State.programs=await Programs.set(exists ? State.programs.map(p=>p.id===prog.id?prog:p) : State.programs.concat([prog]));
-    State.programState.activeId=prog.id;
     if(!exists) State.programState.next[prog.id]=0;
-    State.programDayPick=null; State.programEditor=null;
+    State.programOpenId=prog.id; State.programDayPick=null; State.programEditor=null;
     await saveProgramState();
-    showToast(`Programme « ${name} » enregistré`);
+    showToast(`Training « ${name} » enregistré`);
     await render();
   });
   on('pe-delete', async ()=>{
-    if(!confirm(`Supprimer le programme « ${ed.name} » ? Tes séances déjà enregistrées sont conservées.`)) return;
-    State.programs=await Programs.set(State.programs.filter(p=>p.id!==ed.id));
-    delete State.programState.next[ed.id];
-    if(State.programState.activeId===ed.id) State.programState.activeId=State.programs[0] ? State.programs[0].id : null;
-    State.programEditor=null; State.programDayPick=null;
-    await saveProgramState();
-    showToast('Programme supprimé');
-    await render();
+    if(await deleteProgram(ed.id)){ State.programEditor=null; await render(); }
   });
 }
 
