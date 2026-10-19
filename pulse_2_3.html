@@ -307,18 +307,25 @@ const UNIT_OPTIONS = ['serving','g','oz','cup','tbsp','tsp','piece'];
 // simpler, more relevant unit choice: portion (as printed on the label) vs.
 // grams, or vs. millilitres for liquids — instead of the full curated-DB list.
 function unitOptionsFor(food){
-  if(!food || food.source!=='web') return UNIT_OPTIONS;
-  const opts=[];
-  if(food.units && food.units.serving!=null) opts.push('serving');
-  opts.push(food.isLiquid ? 'ml' : 'g');
-  return opts;
+  if(!food) return UNIT_OPTIONS;
+  if(food.source==='web'){
+    const opts=[];
+    if(food.units && food.units.serving!=null) opts.push('serving');
+    opts.push(food.isLiquid ? 'ml' : 'g');
+    return opts;
+  }
+  // Only offer "piece"/"serving" when the food actually defines one — otherwise they
+  // silently meant an arbitrary 100 g. Volume units keep their usual approximations.
+  const defined=Object.keys(food.units||{});
+  return defined.concat(['g','oz','cup','tbsp','tsp'].filter(u=>!defined.includes(u)));
 }
 function defaultQtyUnitFor(food){
   if(food && food.source==='web'){
     if(food.units && food.units.serving!=null) return { qty:'1', unit:'serving' };
     return { qty:'100', unit: food.isLiquid?'ml':'g' };
   }
-  return { qty:'1', unit: (food && food.units && Object.keys(food.units)[0]) ? Object.keys(food.units)[0] : 'g' };
+  const first=food && food.units && Object.keys(food.units)[0];
+  return first ? { qty:'1', unit:first } : { qty:'100', unit:'g' }; // was 1 g → ~0 kcal logged by accident
 }
 
 /* =========================================================
@@ -344,9 +351,13 @@ const Utils = {
     return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
   },
   uid(prefix){ return (prefix||'id')+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); },
-  esc(s){ const el=document.createElement('div'); el.textContent=s==null?'':String(s); return el.innerHTML; },
+  // Escapes for both text and attribute contexts — quotes matter because names from
+  // third-party data (wger, Open Food Facts) end up inside value="..." / data-*="...".
+  esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); },
+  // Parses user input; returns null when blank/non-numeric or outside [min,max].
+  inRange(v,min,max){ if(v===''||v==null) return null; const n=Number(v); return Number.isFinite(n) && n>=min && n<=max ? n : null; },
   clamp(n,a,b){ return Math.max(a,Math.min(b,n)); },
-  round(n,dp){ dp=dp==null?1:dp; const f=Math.pow(10,dp); return Math.round((Number(n)||0+Number.EPSILON)*f)/f; },
+  round(n,dp){ dp=dp==null?1:dp; const f=Math.pow(10,dp); return Math.round(((Number(n)||0)+Number.EPSILON)*f)/f; },
   roundInt(n){ return Math.round(Number(n)||0); },
   num(n,fallback){ const v=Number(n); return Number.isFinite(v)?v:(fallback||0); },
   isValidDateKey(s){ return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s); },
@@ -500,7 +511,9 @@ function sanitizeEntries(arr){
   return Array.isArray(arr) ? arr.filter(isValidEntry).map(e=>({
     id:e.id||Utils.uid('food'), mealType:e.mealType||'snack', name:e.name,
     brand:e.brand||'', serving:e.serving||'', quantity:Utils.num(e.quantity,1), unit:e.unit||'serving',
-    calories:Utils.num(e.calories), protein:Utils.num(e.protein), carbs:Utils.num(e.carbs), fat:Utils.num(e.fat),
+    // Clamp so entries saved before input validation existed (negatives, typos) can't skew totals.
+    calories:Utils.clamp(Utils.num(e.calories),0,10000), protein:Utils.clamp(Utils.num(e.protein),0,1000),
+    carbs:Utils.clamp(Utils.num(e.carbs),0,1000), fat:Utils.clamp(Utils.num(e.fat),0,1000),
     source:e.source||'manual', sourceLabel:e.sourceLabel||''
   })) : [];
 }
@@ -543,8 +556,10 @@ function sanitizeWeightEntries(arr){
   return Array.isArray(arr) ? arr.filter(e=>e && typeof e==='object' && Utils.isValidDateKey(e.date))
     .map(e=>({
       id:e.id||Utils.uid('wt'), date:e.date,
-      weightKg: e.weightKg!=null && e.weightKg!=='' ? Utils.num(e.weightKg) : null,
-      bodyFatPct: e.bodyFatPct!=null && e.bodyFatPct!=='' ? Utils.num(e.bodyFatPct) : null
+      // Out-of-range values (typos from before validation existed) are dropped so they
+      // can't skew charts or the adaptive-maintenance trend.
+      weightKg: Utils.inRange(e.weightKg,20,400),
+      bodyFatPct: Utils.inRange(e.bodyFatPct,2,70)
     }))
     .sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0) : [];
 }
@@ -553,10 +568,12 @@ const WeightLog = {
   async upsert(dateKey, weightKg, bodyFatPct){
     const all=await WeightLog.getAll();
     const idx=all.findIndex(e=>e.date===dateKey);
+    const prev=idx>=0 ? all[idx] : {};
+    // A blank field means "not re-entered today", not "erase it" — keep what was logged earlier.
     const entry={
-      id: idx>=0 ? all[idx].id : Utils.uid('wt'), date:dateKey,
-      weightKg: weightKg!=null && weightKg!=='' ? Utils.num(weightKg) : null,
-      bodyFatPct: bodyFatPct!=null && bodyFatPct!=='' ? Utils.num(bodyFatPct) : null
+      id: idx>=0 ? prev.id : Utils.uid('wt'), date:dateKey,
+      weightKg: weightKg!=null && weightKg!=='' ? Utils.num(weightKg) : (prev.weightKg ?? null),
+      bodyFatPct: bodyFatPct!=null && bodyFatPct!=='' ? Utils.num(bodyFatPct) : (prev.bodyFatPct ?? null)
     };
     if(idx>=0) all[idx]=entry; else all.push(entry);
     const clean=sanitizeWeightEntries(all);
@@ -640,13 +657,17 @@ const Calc = {
     const waterMl=Math.round(Utils.clamp(p.weightKg*33,1800,4000));
     return {calories,protein,carbs,fat,waterMl};
   },
-  epley1RM(weight,reps){ if(!weight||!reps) return 0; return weight*(1+reps/30); },
+  // Epley is only meaningful for low-rep sets; capping at 12 reps stops a high-rep set
+  // (or a typo like 100000 reps) from inventing an absurd "max".
+  epley1RM(weight,reps){ if(!(weight>0)||!(reps>0)) return 0; return weight*(1+Math.min(reps,12)/30); },
   bestSetSummary(sets){
     let best=null;
     (sets||[]).forEach(s=>{
-      if(s.weight!=null && s.reps!=null){
+      if(s.weight>0 && s.reps>0){
+        const unit=s.weightUnit||'lb';
         const est=Calc.epley1RM(s.weight,s.reps);
-        if(!best || est>best.est) best={weight:s.weight,reps:s.reps,est,weightUnit:s.weightUnit||'lb'};
+        const estKg = unit==='kg' ? est : Utils.lbToKg(est); // compare across units on one scale
+        if(!best || estKg>best.estKg) best={weight:s.weight,reps:s.reps,est,estKg,weightUnit:unit};
       }
     });
     return best;
@@ -1204,7 +1225,7 @@ const OFF = (function(){
    ========================================================= */
 const ExerciseDB = (function(){
   const BASE='https://wger.de/api/v2';
-  const CACHE_KEY='wger_exercise_cache';
+  const CACHE_KEY='wger_exercise_cache_v2'; // v2 adds French+English alt names; old caches re-sync automatically
   const PAGE_SIZE=100;
   const PREFERRED_LANGS=[12,2]; // French, then English
   let cache=null; // {syncedAt, items:[...]}
@@ -1220,9 +1241,18 @@ const ExerciseDB = (function(){
   function mapExercise(raw){
     const t=pickTranslation(raw.translations);
     if(!t) return null;
+    // Keep the other-language name and aliases searchable, so "bench press" finds
+    // "Développé couché" and vice versa.
+    const alt=[];
+    (raw.translations||[]).forEach(tr=>{
+      if(!PREFERRED_LANGS.includes(tr.language)) return;
+      if(tr.name && tr.name!==t.name) alt.push(tr.name);
+      (tr.aliases||[]).forEach(a=>{ const s=typeof a==='string'?a:(a&&a.alias); if(s) alt.push(s); });
+    });
     return {
       id:raw.id,
       name:t.name,
+      alt,
       category:(raw.category && raw.category.name) || '',
       muscles:(raw.muscles||[]).map(m=>m.name_en||m.name),
       musclesSecondary:(raw.muscles_secondary||[]).map(m=>m.name_en||m.name),
@@ -1260,17 +1290,48 @@ const ExerciseDB = (function(){
     return { synced: !!(c && c.items && c.items.length), count: c ? c.items.length : 0, syncedAt: c ? c.syncedAt : null };
   }
 
+  // Built-in staples (FR + EN names) so search works instantly, offline, and before
+  // the wger library has finished downloading.
+  const BUILTIN=[
+    ['Développé couché','Bench Press','Chest','Barbell'],['Développé incliné','Incline Bench Press','Chest','Barbell'],
+    ['Développé couché haltères','Dumbbell Bench Press','Chest','Dumbbell'],['Écarté haltères','Dumbbell Fly','Chest','Dumbbell'],
+    ['Pompes','Push-up','Chest','Body weight'],['Dips','Dips','Chest','Body weight'],
+    ['Squat','Back Squat','Legs','Barbell'],['Squat avant','Front Squat','Legs','Barbell'],['Squat goblet','Goblet Squat','Legs','Dumbbell'],
+    ['Presse à cuisses','Leg Press','Legs','Machine'],['Fentes','Lunges','Legs','Dumbbell'],['Fentes bulgares','Bulgarian Split Squat','Legs','Dumbbell'],
+    ['Leg extension','Leg Extension','Legs','Machine'],['Leg curl','Leg Curl','Legs','Machine'],['Mollets debout','Standing Calf Raise','Calves','Machine'],
+    ['Soulevé de terre','Deadlift','Back','Barbell'],['Soulevé de terre roumain','Romanian Deadlift','Legs','Barbell'],['Hip thrust','Hip Thrust','Glutes','Barbell'],
+    ['Tractions','Pull-up','Back','Body weight'],['Tractions supination','Chin-up','Back','Body weight'],['Tirage vertical','Lat Pulldown','Back','Machine'],
+    ['Rowing barre','Barbell Row','Back','Barbell'],['Rowing haltère','Dumbbell Row','Back','Dumbbell'],['Tirage horizontal','Seated Cable Row','Back','Cable'],
+    ['Développé militaire','Overhead Press','Shoulders','Barbell'],['Développé épaules haltères','Dumbbell Shoulder Press','Shoulders','Dumbbell'],
+    ['Élévations latérales','Lateral Raise','Shoulders','Dumbbell'],['Face pull','Face Pull','Shoulders','Cable'],['Oiseau','Rear Delt Fly','Shoulders','Dumbbell'],
+    ['Curl biceps','Biceps Curl','Arms','Dumbbell'],['Curl marteau','Hammer Curl','Arms','Dumbbell'],['Curl barre','Barbell Curl','Arms','Barbell'],
+    ['Extension triceps poulie','Triceps Pushdown','Arms','Cable'],['Barre au front','Skull Crusher','Arms','Barbell'],['Extension triceps nuque','Overhead Triceps Extension','Arms','Dumbbell'],
+    ['Gainage','Plank','Abs','Body weight'],['Crunch','Crunch','Abs','Body weight'],['Relevé de jambes','Hanging Leg Raise','Abs','Body weight'],['Russian twist','Russian Twist','Abs','Body weight'],
+    ['Course','Run','Cardio',''],['Marche','Walk','Cardio',''],['Vélo','Bike','Cardio',''],['Rameur','Rowing Machine','Cardio','Machine'],
+    ['Corde à sauter','Jump Rope','Cardio',''],['Elliptique','Elliptical','Cardio','Machine'],['Natation','Swimming','Cardio',''],['Burpees','Burpees','Cardio','Body weight']
+  ].map(([fr,en,category,eq])=>({ name:fr, alt:[en], category, equipment:eq?[eq]:[], builtin:true }));
+
+  function norm(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
+
   function search(query, limit){
     limit=limit||8;
-    const q=(query||'').trim().toLowerCase();
-    if(!q || !cache || !cache.items) return [];
-    const starts=[], contains=[];
-    cache.items.forEach(ex=>{
-      const n=ex.name.toLowerCase();
-      if(n.startsWith(q)) starts.push(ex);
-      else if(n.includes(q)) contains.push(ex);
+    const q=norm(query);
+    if(!q) return [];
+    const tokens=q.split(' ');
+    const seen=new Set(), scored=[];
+    BUILTIN.concat((cache && cache.items) || []).forEach(ex=>{
+      const name=norm(ex.name);
+      const hay=name+' '+(ex.alt||[]).map(norm).join(' ');
+      if(!tokens.every(t=>hay.includes(t))) return; // every word, any order, accents ignored
+      if(seen.has(name)) return;
+      seen.add(name);
+      // Best of name and alt names: exact > starts-with > contains — so "bench press" ranks
+      // Développé couché (alt "Bench Press") above "Bench Press Isometric".
+      const rank=s=> s===q ? 0 : s.startsWith(q) ? 1 : s.includes(q) ? 2 : 4;
+      const score=Math.min(rank(name), ...(ex.alt||[]).map(a=>rank(norm(a))+0.25));
+      scored.push({ ex, score: score + (ex.builtin?0:0.5) }); // staples first on ties
     });
-    return starts.concat(contains).slice(0,limit);
+    return scored.sort((a,b)=>a.score-b.score || a.ex.name.length-b.ex.name.length).slice(0,limit).map(s=>s.ex);
   }
 
   return { loadCache, sync, status, search };
@@ -1458,7 +1519,6 @@ async function render(){
 const setupDraft = { name:'', sex:'male', age:30, heightCm:175, weightKg:75, activityLevel:'light', goalType:'maintain' };
 
 function renderSetup(){
-  const g = Calc.computeGoalsFromProfile(setupDraft);
   return `
   <div class="setup-shell">
     <header class="brand" style="margin-bottom:18px;">
@@ -1501,7 +1561,7 @@ function renderSetup(){
       </div>
 
       <div class="goal-preview" id="su-preview">
-        Based on these numbers: <strong>${g.calories} kcal/day</strong> · P ${g.protein}g · C ${g.carbs}g · F ${g.fat}g · Water ${Math.round(g.waterMl/1000*10)/10} L
+        ${setupPreviewHtml()}
       </div>
 
       <div class="setup-actions">
@@ -1511,10 +1571,27 @@ function renderSetup(){
   </div>`;
 }
 
+const SETUP_LIMITS={ age:[13,100,'Age'], heightCm:[120,230,'Height (cm)'], weightKg:[30,300,'Weight (kg)'] };
+function setupError(d){
+  for(const [k,[min,max,label]] of Object.entries(SETUP_LIMITS)){
+    if(!(Number(d[k])>=min && Number(d[k])<=max)) return `${label} must be between ${min} and ${max}`;
+  }
+  return null;
+}
+// Once the adaptive estimate has been applied, editing the profile must keep using it —
+// otherwise saving the setup silently threw it away and went back to the formula.
+function setupGoals(d){
+  return d.adaptiveTDEE ? Calc.goalsFromTDEE(d, d.adaptiveTDEE) : Calc.computeGoalsFromProfile(d);
+}
+function setupPreviewHtml(){
+  const err=setupError(setupDraft);
+  if(err) return `<span style="color:var(--danger)">${Utils.esc(err)}</span>`;
+  const g=setupGoals(setupDraft);
+  return `Based on these numbers${setupDraft.adaptiveTDEE?' and your measured maintenance':''}: <strong>${g.calories} kcal/day</strong> · P ${g.protein}g · C ${g.carbs}g · F ${g.fat}g · Water ${Math.round(g.waterMl/1000*10)/10} L`;
+}
 function refreshSetupPreview(){
-  const g=Calc.computeGoalsFromProfile(setupDraft);
   const el=document.getElementById('su-preview');
-  if(el) el.innerHTML = `Based on these numbers: <strong>${g.calories} kcal/day</strong> · P ${g.protein}g · C ${g.carbs}g · F ${g.fat}g · Water ${Math.round(g.waterMl/1000*10)/10} L`;
+  if(el) el.innerHTML = setupPreviewHtml();
 }
 
 function wireSetup(){
@@ -1541,7 +1618,7 @@ function wireSetup(){
   });
   ['su-age','su-height','su-weight'].forEach(id=>{
     document.getElementById(id).addEventListener('input', (e)=>{
-      const v=Utils.num(e.target.value, id==='su-age'?30:id==='su-height'?175:75);
+      const v=e.target.value===''?NaN:Number(e.target.value); // blank stays invalid instead of silently becoming 0
       if(id==='su-age') setupDraft.age=v;
       if(id==='su-height') setupDraft.heightCm=v;
       if(id==='su-weight') setupDraft.weightKg=v;
@@ -1549,11 +1626,14 @@ function wireSetup(){
     });
   });
   document.getElementById('su-save').addEventListener('click', async ()=>{
-    const goals=Calc.computeGoalsFromProfile(setupDraft);
+    const err=setupError(setupDraft);
+    if(err){ showToast(err); return; }
+    const goals=setupGoals(setupDraft);
     const profile={
       name:setupDraft.name.trim()||'Athlete', sex:setupDraft.sex, age:setupDraft.age,
       heightCm:setupDraft.heightCm, weightKg:setupDraft.weightKg,
-      activityLevel:setupDraft.activityLevel, goalType:setupDraft.goalType, goals
+      activityLevel:setupDraft.activityLevel, goalType:setupDraft.goalType, goals,
+      ...(setupDraft.adaptiveTDEE ? { adaptiveTDEE:setupDraft.adaptiveTDEE } : {})
     };
     await Profile.set(profile);
     State.profile=profile;
@@ -1585,7 +1665,8 @@ async function getWeekCalories(anchorDate){
 const ADAPTIVE_WINDOW_DAYS=28;
 const KCAL_PER_KG=7700;
 async function computeAdaptiveTDEE(profile, weightHistory){
-  const startKey=Utils.dateKey(Utils.addDays(new Date(),-(ADAPTIVE_WINDOW_DAYS-1)));
+  // Window ends yesterday: today's log is usually incomplete and would drag the average intake down.
+  const startKey=Utils.dateKey(Utils.addDays(new Date(),-ADAPTIVE_WINDOW_DAYS));
   const start=Utils.parseDateKey(startKey);
   const pts=weightHistory.filter(e=>e.weightKg!=null && e.date>=startKey)
     .map(e=>({ t:(Utils.parseDateKey(e.date)-start)/86400000, w:e.weightKg }));
@@ -1670,7 +1751,8 @@ function renderShell(dateKey, entries, workout, water, weekTotals, weightHistory
 }
 
 function weekAvgCalories(weekTotals){
-  const logged=weekTotals.filter(w=>w.cal>0);
+  const today=new Date();
+  const logged=weekTotals.filter(w=>w.cal>0 && !Utils.isSameDay(w.date,today)); // today is still in progress
   if(!logged.length) return null;
   return { avg: logged.reduce((s,w)=>s+w.cal,0)/logged.length, days: logged.length };
 }
@@ -1728,7 +1810,7 @@ function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxW
             return `<div class="col ${active?'active':''}"><div class="bar" style="height:${h}%"></div><div class="dow">${dow[w.date.getDay()]}</div></div>`;
           }).join('')}
         </div>
-        ${weekAvg ? `<p class="card-sub" style="margin-top:8px;">7-day avg: <strong style="color:var(--ink);">${Utils.roundInt(weekAvg.avg)} kcal</strong> (over ${weekAvg.days} logged day${weekAvg.days===1?'':'s'}) — steadier signal than a single day for tracking your real trend.</p>` : ''}
+        ${weekAvg ? `<p class="card-sub" style="margin-top:8px;">7-day avg: <strong style="color:var(--ink);">${Utils.roundInt(weekAvg.avg)} kcal</strong> (over ${weekAvg.days} completed day${weekAvg.days===1?'':'s'}, today excluded) — steadier signal than a single day.</p>` : ''}
       </div>
 
       <div class="card water-card">
@@ -1951,6 +2033,22 @@ function renderSelectedFoodRow(sel){
 /* =========================================================
    WORKOUT TAB
    ========================================================= */
+function renderExerciseSuggestions(){
+  const wi=State.workoutInput;
+  const q=(wi.exerciseName||'').trim();
+  if(!q) return '';
+  if(!wi.suggestions.length){
+    return `<div class="ex-suggest"><div class="ex-suggest-row" style="cursor:default;">
+      <span class="fn">No match for “${Utils.esc(q)}”</span>
+      <span class="fm">Tap Add to log it as a custom exercise${State.exerciseSync.status==='syncing'?' · library still loading…':''}</span></div></div>`;
+  }
+  return `<div class="ex-suggest">${wi.suggestions.map((s,i)=>`
+    <button type="button" class="ex-suggest-row" data-pick-ex-idx="${i}">
+      <span class="fn">${Utils.esc(s.name)}</span>
+      <span class="fm">${Utils.esc([s.category, (s.equipment||[]).join(', ')].filter(Boolean).join(' · '))}</span>
+    </button>`).join('')}</div>`;
+}
+
 function renderExerciseSyncStatus(){
   const s=State.exerciseSync;
   if(s.status==='syncing') return `Syncing exercise library… ${s.count} loaded so far.`;
@@ -1981,17 +2079,11 @@ function renderWorkoutTab(dateKey, workout){
         ${cat==='cardio' ? `<div class="water-btns" style="margin-bottom:10px;">
           ${['Run','Walk','Bike','Cardio'].map(l=>`<button type="button" class="chip-btn" data-cardio-preset="${l}">${l}</button>`).join('')}
         </div>` : ''}
-        <div class="status-line" style="padding-top:0;">${renderExerciseSyncStatus()}</div>
+        <div class="status-line" id="ex-sync-status" style="padding-top:0;">${renderExerciseSyncStatus()}</div>
         <div class="quicklog" style="position:relative;">
-          <input type="text" id="wk-exname" autocomplete="off" placeholder="${cat==='cardio'?'Add cardio (e.g. Morning Run)':'Add exercise (e.g. Bench Press)'}" value="${Utils.esc(State.workoutInput.exerciseName)}"/>
+          <input type="search" id="wk-exname" autocomplete="off" enterkeyhint="done" placeholder="${cat==='cardio'?'Search or add cardio (e.g. Run)':'Search or add exercise (e.g. Bench Press)'}" value="${Utils.esc(State.workoutInput.exerciseName)}"/>
           <button class="btn accent" id="wk-add-exercise">Add</button>
-          ${State.workoutInput.suggestions.length ? `
-            <div class="ex-suggest">
-              ${State.workoutInput.suggestions.map(s=>`<button type="button" class="ex-suggest-row" data-pick-exercise="${Utils.esc(s.name)}">
-                <span class="fn">${Utils.esc(s.name)}</span>
-                <span class="fm">${Utils.esc([s.category, (s.equipment||[]).join(', ')].filter(Boolean).join(' · '))}</span>
-              </button>`).join('')}
-            </div>` : ''}
+          <div id="ex-suggest-box">${renderExerciseSuggestions()}</div>
         </div>
         <div class="exlist" id="wk-exlist">
           ${workout.entries.length ? workout.entries.map(ex=>renderExercise(ex)).join('') : `<div class="empty">No exercises logged for this day yet.</div>`}
@@ -2007,6 +2099,8 @@ function renderWorkoutTab(dateKey, workout){
 
 function renderExercise(ex){
   const isCardio = ex.category==='cardio';
+  const draft=State.setInputs[ex.id]||{}; // survives re-renders until the set is logged
+  const unit=draft.weightUnit || State.settings.weightUnit || 'lb';
   const best = isCardio ? Calc.bestPaceSummary(ex.sets) : Calc.bestSetSummary(ex.sets);
   const bestLabel = isCardio
     ? (best ? ` · best pace ~${Calc.formatPace(best.durationSec,best.distanceKm)}` : '')
@@ -2032,15 +2126,15 @@ function renderExercise(ex){
     </div>
     ${isCardio ? `
     <div class="addset-row">
-      <input type="number" min="0" step="0.01" placeholder="Distance (km)" class="setinput" data-field="distance" data-exid="${ex.id}"/>
-      <input type="number" min="0" step="0.5" placeholder="Time (min)" class="setinput" data-field="duration" data-exid="${ex.id}"/>
+      <input type="number" min="0" step="0.01" placeholder="Distance (km)" class="setinput" data-field="distance" data-exid="${ex.id}" value="${Utils.esc(draft.distance||'')}"/>
+      <input type="number" min="0" step="0.5" placeholder="Time (min)" class="setinput" data-field="duration" data-exid="${ex.id}" value="${Utils.esc(draft.duration||'')}"/>
       <button class="btn secondary" data-add-set="${ex.id}">+ Log</button>
     </div>` : `
     <div class="addset-row">
-      <input type="number" min="0" placeholder="Reps" class="setinput" data-field="reps" data-exid="${ex.id}"/>
-      <input type="number" min="0" step="0.5" placeholder="Weight" class="setinput" data-field="weight" data-exid="${ex.id}"/>
+      <input type="number" min="1" placeholder="Reps" class="setinput" data-field="reps" data-exid="${ex.id}" value="${Utils.esc(draft.reps||'')}"/>
+      <input type="number" min="0" step="0.5" placeholder="Weight" class="setinput" data-field="weight" data-exid="${ex.id}" value="${Utils.esc(draft.weight||'')}"/>
       <select class="setinput" data-field="weightUnit" data-exid="${ex.id}" style="max-width:70px;">
-        <option value="lb">lb</option><option value="kg">kg</option>
+        ${['lb','kg'].map(u=>`<option value="${u}" ${unit===u?'selected':''}>${u}</option>`).join('')}
       </select>
       <button class="btn secondary" data-add-set="${ex.id}">+ Set</button>
     </div>`}
@@ -2063,7 +2157,7 @@ async function computeAllPRs(){
         const best=Calc.bestSetSummary(ex.sets);
         if(best){
           const cur=prMap[ex.exerciseName];
-          if(!cur || cur.type!=='strength' || best.est>cur.est) prMap[ex.exerciseName]={type:'strength', ...best};
+          if(!cur || cur.type!=='strength' || best.estKg>cur.estKg) prMap[ex.exerciseName]={type:'strength', ...best};
         }
       }
     });
@@ -2076,7 +2170,7 @@ async function renderPRListInto(container){
   container.innerHTML = prs.length
     ? prs.map(p=> p.type==='pace'
         ? `<div class="pr-row"><span class="pn">${Utils.esc(p.name)}</span><span class="pv">${Utils.round(p.distanceKm,2)} km · ${Calc.formatPace(p.durationSec,p.distanceKm)}</span></div>`
-        : `<div class="pr-row"><span class="pn">${Utils.esc(p.name)}</span><span class="pv">${p.weight}${p.weightUnit} × ${p.reps} (~${Utils.roundInt(p.est)} e1RM)</span></div>`
+        : `<div class="pr-row"><span class="pn">${Utils.esc(p.name)}</span><span class="pv">${p.weight}${p.weightUnit} × ${p.reps} (~${Utils.roundInt(p.est)}${p.weightUnit} e1RM)</span></div>`
       ).join('')
     : `<div class="empty">Log a few sets or cardio sessions to see PRs here.</div>`;
 }
@@ -2460,8 +2554,36 @@ const FAQ = (function(){
     return score;
   }
 
+  // The FAQ is written in French but the app UI is English: map common English phrasings
+  // onto the French keywords so English questions match too.
+  const EN=[
+    [/protein/, 'proteine'], [/whey|protein powder/, 'whey'],
+    [/lose weight|weight loss|lose fat|fat loss|cutting|\bcut\b/, 'perdre du poids'],
+    [/build muscle|gain muscle|bulk|gain mass|gain weight/, 'prise de masse'],
+    [/cardio (or|vs) (weights|lifting|strength)/, 'cardio ou musculation'],
+    [/how often|times a week|days a week|frequency/, 'combien de fois par semaine'],
+    [/rest between|rest time/, 'repos entre series'], [/sore|doms/, 'courbatures'],
+    [/creatine/, 'creatine'], [/water|hydrat/, 'combien eau'],
+    [/intermittent fasting|fasting/, 'jeune intermittent'], [/plateau|stall|not losing/, 'plateau'],
+    [/warm.?up/, 'echauffement'], [/stretch/, 'etirements'], [/at night|late night|eat late/, 'manger le soir'],
+    [/glycemic/, 'index glycemique'], [/\babs\b|plank/, 'abdos tous les jours'],
+    [/results|how long until|see progress/, 'voir des resultats'], [/vegan|vegetarian|plant protein/, 'proteine vegan'],
+    [/alcohol|beer|wine/, 'alcool et musculation'], [/sleep/, 'sommeil recuperation'], [/fasted cardio/, 'cardio a jeun'],
+    [/sets per week|training volume/, 'series par semaine'], [/full body|split|push pull/, 'full body ou split'],
+    [/heavy or light|rep range|strength or hypertrophy/, 'reps lourdes ou legeres'],
+    [/knee|back pain|joint pain/, 'douleur articulaire musculation'],
+    [/maintenance calories|tdee|how many calories/, 'calories de maintien'],
+    [/anabolic window|after (my )?workout|post.?workout/, 'fenetre anabolique'], [/bcaa/, 'bcaa'],
+    [/supplement/, 'supplements debutant'], [/women|woman|bulky/, 'femme musculation volume'],
+    [/senior|older|over 60/, 'musculation senior'], [/too fast/, 'perte de poids trop rapide'],
+    [/injur/, 'reprise apres blessure'], [/keto|low carb/, 'regime keto'], [/how much cardio/, 'combien de cardio par semaine'],
+    [/morning or evening|best time to (train|workout)/, 'musculation matin ou soir'], [/overtrain/, 'surentrainement'],
+    [/hungry|hunger/, 'deficit sans faim'], [/recomp/, 'recomposition corporelle'], [/before (my )?workout|pre.?workout/, 'manger avant entrainement']
+  ];
+
   function answer(query){
-    const qNorm=normalize(query);
+    const base=normalize(query);
+    const qNorm=[base].concat(EN.filter(([re])=>re.test(base)).map(([,fr])=>fr)).join(' ');
     const qTokens=qNorm.split(' ').filter(Boolean);
     let best=null, bestScore=0;
     const scored=items.map(item=>({item, score:scoreItem(qNorm,qTokens,item)}));
@@ -2543,6 +2665,21 @@ function renderCoachTab(){
   </div>`;
 }
 
+// Lets the free (no-key) coach answer "how am I doing today?" from the user's own log —
+// the FAQ alone can't, yet that's the example question the chat suggests.
+async function todayStatusReply(text){
+  const q=(text||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if(!/(aujourd|today|on track|tracking|remaining|left today|me reste|reste.?t.?il|mon total|ou j.?en suis|how am i|where am i|objectif du jour|goals? today)/.test(q)) return null;
+  const key=Utils.dateKey(new Date());
+  const [entries, water]=await Promise.all([DayLog.get(key), WaterLog.get(key)]);
+  const t=Calc.totals(entries), g=State.profile.goals;
+  const left=Math.round(g.calories-t.calories);
+  const pct=(v,goal)=>goal>0?Math.round(v/goal*100):0;
+  return `Aujourd'hui : ${Math.round(t.calories)} / ${g.calories} kcal (${left>=0?`il te reste ${left} kcal`:`${-left} kcal au-dessus`}).\n`
+    + `Protéines ${Math.round(t.protein)}/${g.protein} g (${pct(t.protein,g.protein)}%) · Glucides ${Math.round(t.carbs)}/${g.carbs} g · Lipides ${Math.round(t.fat)}/${g.fat} g · Eau ${(water.ml/1000).toFixed(1)}/${(g.waterMl/1000).toFixed(1)} L.`
+    + (t.protein < g.protein*0.6 && entries.length ? `\nPriorise les protéines pour le reste de la journée.` : '');
+}
+
 async function sendChatMessage(text){
   text=(text||'').trim();
   if(!text || State.chat.sending) return;
@@ -2570,7 +2707,10 @@ async function sendChatMessage(text){
       // Free fallback: no external AI key configured — answer from the offline FAQ database.
       const result=FAQ.answer(text);
       let reply;
-      if(result.matched){
+      const statusReply=await todayStatusReply(text);
+      if(statusReply){
+        reply=statusReply;
+      } else if(result.matched){
         reply=result.text;
       } else if(result.suggestions.length){
         reply=`Je n'ai pas de réponse toute faite pour ça dans ma FAQ gratuite. Sujets proches : ${result.suggestions.join(' · ')}\n\nAjoute une clé Gemini gratuite ci-dessus pour des réponses libres sur n'importe quel sujet.`;
@@ -2661,10 +2801,10 @@ function wireProgressTab(weightHistory){
   const saveBtn=document.getElementById('pg-save');
   if(saveBtn) saveBtn.addEventListener('click', async ()=>{
     const draft=State.progressDraft;
-    if((draft.weightKg===''||draft.weightKg==null) && (draft.bodyFatPct===''||draft.bodyFatPct==null)){
-      showToast('Enter a weight or body fat % first');
-      return;
-    }
+    const wBlank=draft.weightKg===''||draft.weightKg==null, fBlank=draft.bodyFatPct===''||draft.bodyFatPct==null;
+    if(wBlank && fBlank){ showToast('Enter a weight or body fat % first'); return; }
+    if(!wBlank && Utils.inRange(draft.weightKg,20,400)==null){ showToast('Weight must be between 20 and 400 kg'); return; }
+    if(!fBlank && Utils.inRange(draft.bodyFatPct,2,70)==null){ showToast('Body fat must be between 2 and 70%'); return; }
     const todayKey=Utils.dateKey(new Date());
     await WeightLog.upsert(todayKey, draft.weightKg, draft.bodyFatPct);
     State.progressDraft={ weightKg:'', bodyFatPct:'' };
@@ -2684,8 +2824,8 @@ function wireProgressTab(weightHistory){
   if(applyBtn) applyBtn.addEventListener('click', async ()=>{
     const a=State.adaptive;
     if(!a || !a.ready) return;
-    const p={ ...State.profile, weightKg:a.latestWeight };
-    p.goals=Calc.goalsFromTDEE(p, a.tdee);
+    const p={ ...State.profile, weightKg:Utils.round(a.latestWeight,1), adaptiveTDEE:Math.round(a.tdee) };
+    p.goals=Calc.goalsFromTDEE(p, p.adaptiveTDEE);
     State.profile=await Profile.set(p);
     showToast(`Target updated to ${p.goals.calories} kcal`);
     await render();
@@ -2929,6 +3069,7 @@ function wireAddPanel(dateKey, entries){
   if(confirmAdd) confirmAdd.addEventListener('click', async ()=>{
     const food=ap.pickedFood;
     if(!food) return;
+    if(Utils.inRange(ap.selected.qty,0.01,10000)==null){ showToast('Enter a quantity greater than 0'); return; }
     const m=FoodDB.macrosFor(food, ap.selected.qty, ap.selected.unit);
     const entry={
       id:Utils.uid('food'), mealType:ap.meal, name:food.name, quantity:Utils.num(ap.selected.qty,1), unit:ap.selected.unit,
@@ -2955,9 +3096,14 @@ function wireAddPanel(dateKey, entries){
   if(manualAdd) manualAdd.addEventListener('click', async ()=>{
     const m=ap.manual;
     if(!m.name.trim()){ showToast('Enter a food name'); return; }
+    // Blank = 0, but anything typed must be a realistic, non-negative amount.
+    const val=(v,max)=> v===''||v==null ? 0 : Utils.inRange(v,0,max);
+    const cal=val(m.calories,10000), p=val(m.protein,1000), c=val(m.carbs,1000), f=val(m.fat,1000);
+    if(cal==null){ showToast('Calories must be between 0 and 10,000'); return; }
+    if(p==null||c==null||f==null){ showToast('Protein, carbs and fat must be between 0 and 1,000 g'); return; }
     const entry={
       id:Utils.uid('food'), mealType:ap.meal, name:m.name.trim(), quantity:1, unit:'serving',
-      calories:Utils.num(m.calories), protein:Utils.num(m.protein), carbs:Utils.num(m.carbs), fat:Utils.num(m.fat),
+      calories:cal, protein:p, carbs:c, fat:f,
       source:'manual', sourceLabel:'Manual entry'
     };
     const updated=entries.concat([entry]);
@@ -2986,51 +3132,73 @@ function refreshSelectedPreview(){
 function wireWorkoutTab(dateKey, workout){
   const addExBtn=document.getElementById('wk-add-exercise');
   const exInput=document.getElementById('wk-exname');
-  if(exInput && document.activeElement!==exInput && State.workoutInput.suggestions.length){
-    exInput.focus();
-    exInput.setSelectionRange(exInput.value.length, exInput.value.length);
-  }
+  const wi=State.workoutInput;
   async function addExercise(name){
     name=(name!=null?name:(exInput.value||'')).trim();
     if(!name){ showToast('Enter an exercise name'); return; }
-    const category=State.workoutInput.category||'strength';
-    const updated={ entries: workout.entries.concat([{ id:Utils.uid('ex'), exerciseName:name, category, sets:[] }]) };
-    await WorkoutLog.set(dateKey, updated);
-    State.workoutInput.exerciseName='';
-    State.workoutInput.suggestions=[];
+    const category=wi.category||'strength';
+    // Re-read: this can be called from a suggestion list patched in after a later render.
+    const key=Utils.dateKey(State.currentDate);
+    const current=await WorkoutLog.get(key);
+    await WorkoutLog.set(key, { entries: current.entries.concat([{ id:Utils.uid('ex'), exerciseName:name, category, sets:[] }]) });
+    wi.exerciseName=''; wi.suggestions=[];
     showToast(`Added ${name}`);
     await render();
   }
+  // Suggestions are patched in place rather than via render(): a full re-render recreated
+  // the input on every keystroke, which dropped focus (and closed the phone keyboard).
+  function refreshSuggestions(){
+    wi.suggestions=ExerciseDB.search(wi.exerciseName, 6);
+    const box=document.getElementById('ex-suggest-box');
+    if(!box) return;
+    box.innerHTML=renderExerciseSuggestions();
+    box.querySelectorAll('[data-pick-ex-idx]').forEach(btn=>{
+      btn.addEventListener('mousedown', e=>e.preventDefault()); // keep focus in the input
+      btn.addEventListener('click', ()=>{ const s=wi.suggestions[Utils.num(btn.dataset.pickExIdx)]; if(s) addExercise(s.name); });
+    });
+  }
   if(addExBtn) addExBtn.addEventListener('click', ()=>addExercise());
-  if(exInput) exInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addExercise(); if(e.key==='Escape'){ State.workoutInput.suggestions=[]; render(); } });
-  if(exInput) exInput.addEventListener('input', Utils.debounce((e)=>{
-    State.workoutInput.exerciseName=e.target.value;
-    State.workoutInput.suggestions=ExerciseDB.search(e.target.value, 6);
-    render();
-  }, 150));
+  if(exInput){
+    exInput.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){ e.preventDefault(); addExercise(); }
+      if(e.key==='Escape'){ wi.exerciseName=''; exInput.value=''; refreshSuggestions(); }
+    });
+    exInput.addEventListener('input', (e)=>{ wi.exerciseName=e.target.value; refreshSuggestions(); });
+    refreshSuggestions();
+  }
 
-  document.querySelectorAll('[data-pick-exercise]').forEach(btn=>{
-    btn.addEventListener('click', ()=>addExercise(btn.dataset.pickExercise));
-  });
-
-  const syncBtn=document.getElementById('ex-sync-btn');
-  if(syncBtn) syncBtn.addEventListener('click', async ()=>{
+  function paintSyncStatus(){
+    const el=document.getElementById('ex-sync-status');
+    if(!el) return;
+    el.innerHTML=renderExerciseSyncStatus();
+    const btn=document.getElementById('ex-sync-btn');
+    if(btn) btn.addEventListener('click', runExerciseSync);
+  }
+  async function runExerciseSync(){
+    if(State.exerciseSync.status==='syncing') return;
     State.exerciseSync={ status:'syncing', count:0, syncedAt:null };
-    await render();
+    paintSyncStatus();
     try{
       const result=await ExerciseDB.sync((loaded)=>{
         State.exerciseSync={ status:'syncing', count:loaded, syncedAt:null };
-        const statusEl=document.querySelector('.status-line');
-        if(statusEl) statusEl.innerHTML=renderExerciseSyncStatus();
+        paintSyncStatus();
       });
       State.exerciseSync={ status:'done', count:result.items.length, syncedAt:result.syncedAt };
-      showToast(`Synced ${result.items.length} exercises`);
     }catch(err){
       console.error('wger sync error', err);
       State.exerciseSync={ status:'error', count:0, syncedAt:null };
-      showToast('Exercise sync failed — check your connection');
     }
-    await render();
+    // Patch in place so a sync finishing mid-typing doesn't wipe what's being typed.
+    paintSyncStatus();
+    if(document.getElementById('wk-exname')) refreshSuggestions();
+  }
+  paintSyncStatus();
+  // The full wger library used to need a manual tap on "Sync"; until then search found nothing.
+  if(State.exerciseSync.status==='idle') runExerciseSync();
+
+  document.querySelectorAll('.setinput').forEach(el=>{
+    const save=()=>{ const id=el.dataset.exid; State.setInputs[id]={ ...(State.setInputs[id]||{}), [el.dataset.field]:el.value }; };
+    el.addEventListener('input', save); el.addEventListener('change', save);
   });
 
   const catSeg=document.getElementById('wk-category');
@@ -3079,16 +3247,25 @@ function wireWorkoutTab(dateKey, workout){
         const distance=exerciseEl.querySelector('[data-field="distance"]').value;
         const duration=exerciseEl.querySelector('[data-field="duration"]').value;
         if(distance===''&&duration===''){ showToast('Enter a distance and/or time'); return; }
+        const d=distance===''?null:Utils.inRange(distance,0.01,500), t=duration===''?null:Utils.inRange(duration,0.1,1440);
+        if(distance!==''&&d==null){ showToast('Distance must be between 0.01 and 500 km'); return; }
+        if(duration!==''&&t==null){ showToast('Time must be between 0.1 and 1440 min'); return; }
         newSet={ id:Utils.uid('set'), reps:null, weight:null, weightUnit:'lb',
-          distanceKm: distance!==''?Utils.num(distance):null,
-          durationSec: duration!==''?Utils.num(duration)*60:null, notes:'' };
+          distanceKm:d, durationSec: t!=null ? t*60 : null, notes:'' };
       } else {
         const reps=exerciseEl.querySelector('[data-field="reps"]').value;
         const weight=exerciseEl.querySelector('[data-field="weight"]').value;
         const weightUnit=exerciseEl.querySelector('[data-field="weightUnit"]').value;
         if(reps===''&&weight===''){ showToast('Enter reps and/or weight'); return; }
-        newSet={ id:Utils.uid('set'), reps: reps!==''?Utils.num(reps):null, weight: weight!==''?Utils.num(weight):null, weightUnit, distanceKm:null, durationSec:null, notes:'' };
+        const r=reps===''?null:Utils.inRange(reps,1,200);
+        const w=weight===''?null:Utils.inRange(weight,0,weightUnit==='kg'?700:1500);
+        if(reps!==''&&r==null){ showToast('Reps must be between 1 and 200'); return; }
+        if(weight!==''&&w==null){ showToast(`Weight must be between 0 and ${weightUnit==='kg'?700:1500} ${weightUnit}`); return; }
+        newSet={ id:Utils.uid('set'), reps:r!=null?Math.round(r):null, weight:w, weightUnit, distanceKm:null, durationSec:null, notes:'' };
+        if(State.settings.weightUnit!==weightUnit){ State.settings.weightUnit=weightUnit; await Store.set('settings', State.settings); }
       }
+      // Keep the unit, clear the numbers — the next set usually reuses the unit, not the values.
+      State.setInputs[exId]={ weightUnit:(State.setInputs[exId]||{}).weightUnit };
       const updated={ entries: workout.entries.map(ex=> ex.id!==exId ? ex : {...ex, sets:ex.sets.concat([newSet])}) };
       await WorkoutLog.set(dateKey, updated);
       await render();
