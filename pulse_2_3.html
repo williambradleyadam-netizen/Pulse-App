@@ -615,17 +615,24 @@ const Calc = {
     {id:'lose_fat',label:'Lose fat'}, {id:'maintain',label:'Maintain'},
     {id:'build_lean',label:'Build muscle & stay lean'}, {id:'bulk',label:'Bulk up'}
   ],
-  computeGoalsFromProfile(p){
+  formulaTDEE(p){
     const bmr = p.sex==='female' ? 10*p.weightKg+6.25*p.heightCm-5*p.age-161
       : p.sex==='male' ? 10*p.weightKg+6.25*p.heightCm-5*p.age+5
       : 10*p.weightKg+6.25*p.heightCm-5*p.age-78;
     const act = Calc.ACTIVITY.find(a=>a.id===p.activityLevel) || Calc.ACTIVITY[1];
-    const tdee = bmr*act.mult;
-    let calMult=1, proteinPerKg=1.8;
-    if(p.goalType==='lose_fat'){ calMult=0.82; proteinPerKg=2.2; }
-    else if(p.goalType==='maintain'){ calMult=1; proteinPerKg=1.8; }
-    else if(p.goalType==='build_lean'){ calMult=1.08; proteinPerKg=2.0; }
-    else if(p.goalType==='bulk'){ calMult=1.15; proteinPerKg=1.8; }
+    return bmr*act.mult;
+  },
+  goalFactors(goalType){
+    if(goalType==='lose_fat') return { calMult:0.82, proteinPerKg:2.2 };
+    if(goalType==='build_lean') return { calMult:1.08, proteinPerKg:2.0 };
+    if(goalType==='bulk') return { calMult:1.15, proteinPerKg:1.8 };
+    return { calMult:1, proteinPerKg:1.8 };
+  },
+  computeGoalsFromProfile(p){
+    return Calc.goalsFromTDEE(p, Calc.formulaTDEE(p));
+  },
+  goalsFromTDEE(p, tdee){
+    const { calMult, proteinPerKg } = Calc.goalFactors(p.goalType);
     const calories=Math.round(tdee*calMult);
     const protein=Math.round(p.weightKg*proteinPerKg);
     const fat=Math.round((calories*0.25)/9);
@@ -1400,7 +1407,9 @@ const State = {
   settings:{ geminiApiKey:'' },
   progressDraft:{ weightKg:'', bodyFatPct:'' },
   savedMeals:[],
-  saveMealDraft:{ open:false, mealType:null, name:'' }
+  saveMealDraft:{ open:false, mealType:null, name:'' },
+  adaptive:null,
+  recentFoods:[]
 };
 
 function showToast(msg){
@@ -1437,6 +1446,8 @@ async function render(){
     DayLog.get(dateKey), WorkoutLog.get(dateKey), WaterLog.get(dateKey), WeightLog.getAll()
   ]);
   const weekTotals = await getWeekCalories(State.currentDate);
+  if(State.activeTab==='progress') State.adaptive = await computeAdaptiveTDEE(State.profile, weightHistory);
+  if(State.activeTab==='today' && State.addPanel.open) State.recentFoods = await computeRecentFoods(State.currentDate, 8);
   app.innerHTML = renderShell(dateKey, entries, workout, water, weekTotals, weightHistory);
   wireShell(dateKey, entries, workout, water, weightHistory);
 }
@@ -1562,6 +1573,57 @@ async function getWeekCalories(anchorDate){
     return {date:d, cal:Calc.totals(entries).calories};
   }));
   return results;
+}
+
+/* =========================================================
+   ADAPTIVE MAINTENANCE (TDEE) — instead of trusting the formula
+   forever, estimate real maintenance from what actually happened:
+   average logged intake minus the energy implied by the weight
+   trend (~7700 kcal per kg). Blended with the formula while data
+   is thin, so early estimates don't swing wildly.
+   ========================================================= */
+const ADAPTIVE_WINDOW_DAYS=28;
+const KCAL_PER_KG=7700;
+async function computeAdaptiveTDEE(profile, weightHistory){
+  const startKey=Utils.dateKey(Utils.addDays(new Date(),-(ADAPTIVE_WINDOW_DAYS-1)));
+  const start=Utils.parseDateKey(startKey);
+  const pts=weightHistory.filter(e=>e.weightKg!=null && e.date>=startKey)
+    .map(e=>({ t:(Utils.parseDateKey(e.date)-start)/86400000, w:e.weightKg }));
+  const cals=await Promise.all(Array.from({length:ADAPTIVE_WINDOW_DAYS},(_,i)=>
+    DayLog.get(Utils.dateKey(Utils.addDays(start,i))).then(en=>Calc.totals(en).calories)));
+  const logged=cals.filter(c=>c>0);
+  const formula=Calc.formulaTDEE(profile);
+  const base={ formula, loggedDays:logged.length, weighIns:pts.length };
+  const span=pts.length ? pts[pts.length-1].t-pts[0].t : 0;
+  if(logged.length<7 || pts.length<3 || span<10) return { ...base, ready:false, span };
+  // Least-squares slope of weight vs. day: far less sensitive to one noisy weigh-in than first-vs-last.
+  const n=pts.length, mt=pts.reduce((s,p)=>s+p.t,0)/n, mw=pts.reduce((s,p)=>s+p.w,0)/n;
+  let num=0, den=0;
+  pts.forEach(p=>{ num+=(p.t-mt)*(p.w-mw); den+=(p.t-mt)*(p.t-mt); });
+  const slope=den ? num/den : 0;
+  const avgIntake=logged.reduce((s,c)=>s+c,0)/logged.length;
+  const measured=avgIntake - slope*KCAL_PER_KG;
+  const confidence=Math.min(1, logged.length/21);
+  const tdee=Utils.clamp(confidence*measured + (1-confidence)*formula, 1000, 6000);
+  return { ...base, ready:true, span, tdee, avgIntake, slopeKgPerWeek:slope*7, confidence,
+           latestWeight: pts[pts.length-1].w };
+}
+
+/* Most-logged foods over the last 3 weeks, for one-tap re-logging. */
+async function computeRecentFoods(anchorDate, limit){
+  const map={};
+  for(let i=0;i<21;i++){
+    const entries=await DayLog.get(Utils.dateKey(Utils.addDays(anchorDate,-i)));
+    entries.forEach(e=>{
+      const k=e.name.trim().toLowerCase();
+      if(map[k]) map[k].count++;
+      else map[k]={ entry:e, count:1, lastSeen:i }; // i ascends from today, so first hit = most recent version
+    });
+  }
+  return Object.values(map)
+    .sort((a,b)=> b.count-a.count || a.lastSeen-b.lastSeen)
+    .slice(0,limit)
+    .map(x=>({ ...x.entry, count:x.count }));
 }
 
 /* =========================================================
@@ -1791,7 +1853,7 @@ function renderAddPanel(){
         ${results.length ? results.map(f=>`<button type="button" class="result-row" style="width:100%;background:none;border:none;text-align:left;" data-pick-food="${Utils.esc(f.name)}">
             <span><span class="result-name">${Utils.esc(f.name)}</span><br><span class="result-meta">${f.per100.cal} kcal / 100g <span class="tag db">DB</span></span></span>
           </button>`).join('')
-        : (ap.query.trim() ? '' : `<div class="status-line">Start typing to search 300+ common foods, or millions more via Open Food Facts below.</div>`)
+        : (ap.query.trim() ? '' : renderRecentFoods())
         }
         ${renderWebFoodBlock()}
         ${renderBarcodeBlock()}
@@ -1823,6 +1885,21 @@ function renderAddPanel(){
     </div>
     ${body}
   </div>`;
+}
+
+function renderRecentFoods(){
+  const recent=State.recentFoods||[];
+  const hint=`<div class="status-line">Start typing to search 300+ common foods, or millions more via Open Food Facts below.</div>`;
+  if(!recent.length) return hint;
+  return `<div class="status-line" style="padding-bottom:2px;">Recent &amp; frequent — tap + to log again</div>` +
+    recent.map((e,i)=>`
+    <div class="result-row">
+      <div>
+        <div class="result-name">${Utils.esc(e.name)}</div>
+        <div class="result-meta">${Utils.esc(e.quantity+' '+e.unit)} · ${Utils.roundInt(e.calories)} kcal · P${Utils.roundInt(e.protein)} C${Utils.roundInt(e.carbs)} F${Utils.roundInt(e.fat)}${e.count>1?` · logged ${e.count}×`:''}</div>
+      </div>
+      <button class="add-chip" data-quick-add="${i}" title="Log again">+</button>
+    </div>`).join('') + hint;
 }
 
 function renderSavedMealsBody(){
@@ -2170,6 +2247,41 @@ function avgTrendLabel(avgPoints, unit, decimals){
   return `7-entry avg: ${Utils.round(cur,decimals)}${unit} (${delta>0?'+':''}${Utils.round(delta,decimals)}${unit} vs a week of entries ago)`;
 }
 
+function renderAdaptiveCard(){
+  const a=State.adaptive;
+  if(!a) return '';
+  const goal=State.profile.goals.calories;
+  const goalLabel=(Calc.GOALTYPES.find(g=>g.id===State.profile.goalType)||{}).label||'your goal';
+  if(!a.ready){
+    return `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-head"><div><p class="card-title">Adaptive maintenance</p>
+        <p class="card-sub">Learns your real maintenance calories from your logs — like MacroFactor, for free.</p></div></div>
+      <div class="status-line">Needs a bit more data from the last 4 weeks:
+        <strong>${Math.min(a.loggedDays,7)}/7</strong> days of food logged ·
+        <strong>${Math.min(a.weighIns,3)}/3</strong> weigh-ins ·
+        weigh-ins spanning <strong>${Math.min(Math.round(a.span||0),10)}/10</strong> days.
+        Until then your target uses the standard formula (~${Utils.roundInt(a.formula)} kcal maintenance).</div>
+    </div>`;
+  }
+  const suggested=Calc.goalsFromTDEE({ ...State.profile, weightKg:a.latestWeight }, a.tdee).calories;
+  const diff=suggested-goal;
+  const trend=Utils.round(a.slopeKgPerWeek,2);
+  return `
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-head"><div><p class="card-title">Adaptive maintenance</p>
+      <p class="card-sub">Avg intake ${Utils.roundInt(a.avgIntake)} kcal · weight trend ${trend>0?'+':''}${trend} kg/week · ${a.loggedDays} days logged · confidence ${Utils.roundInt(a.confidence*100)}%</p></div></div>
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+      <span class="ring-num">${Utils.roundInt(a.tdee)}</span><span class="card-sub">kcal/day real maintenance</span>
+      <span class="card-sub">(formula said ~${Utils.roundInt(a.formula)})</span>
+    </div>
+    ${Math.abs(diff)>=50 ? `
+      <div class="status-line" style="margin-top:6px;">For <strong>${Utils.esc(goalLabel)}</strong> your target should be <strong>${suggested} kcal</strong> (currently ${goal}, ${diff>0?'+':''}${diff}).</div>
+      <button class="btn accent" id="adaptive-apply" style="margin-top:4px;">Update my target to ${suggested} kcal</button>`
+    : `<div class="status-line" style="margin-top:6px;">Your current target (${goal} kcal) already matches — no change needed.</div>`}
+  </div>`;
+}
+
 function renderProgressTab(weightHistory){
   const draft=State.progressDraft;
   const todayKey=Utils.dateKey(new Date());
@@ -2183,6 +2295,7 @@ function renderProgressTab(weightHistory){
   const recent=weightHistory.slice().sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:0).slice(0,14);
 
   return `
+    ${renderAdaptiveCard()}
     <div class="grid two">
       <div class="card">
         <div class="card-head">
@@ -2566,6 +2679,17 @@ function wireProgressTab(weightHistory){
       await render();
     });
   });
+
+  const applyBtn=document.getElementById('adaptive-apply');
+  if(applyBtn) applyBtn.addEventListener('click', async ()=>{
+    const a=State.adaptive;
+    if(!a || !a.ready) return;
+    const p={ ...State.profile, weightKg:a.latestWeight };
+    p.goals=Calc.goalsFromTDEE(p, a.tdee);
+    State.profile=await Profile.set(p);
+    showToast(`Target updated to ${p.goals.calories} kcal`);
+    await render();
+  });
 }
 
 function wireTodayTab(dateKey, entries, water){
@@ -2662,6 +2786,18 @@ function wireAddPanel(dateKey, entries){
       const updated=entries.concat(newEntries);
       await DayLog.set(dateKey, updated);
       showToast(`Added "${meal.name}" (${meal.items.length} item${meal.items.length===1?'':'s'})`);
+      State.addPanel.open=false;
+      await render();
+    });
+  });
+
+  document.querySelectorAll('[data-quick-add]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const src=(State.recentFoods||[])[Utils.num(btn.dataset.quickAdd)];
+      if(!src) return;
+      const { count, ...entry } = src;
+      await DayLog.set(dateKey, entries.concat([{ ...entry, id:Utils.uid('food'), mealType:ap.meal }]));
+      showToast(`Added ${src.name}`);
       State.addPanel.open=false;
       await render();
     });
