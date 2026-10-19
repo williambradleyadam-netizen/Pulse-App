@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PULSE — Training &amp; Nutrition</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#2F6FED" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="PULSE" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -275,7 +283,52 @@
     position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
     background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;
     box-shadow:var(--shadow);z-index:50;max-width:90vw;text-align:center;
+    animation:toast-in .28s cubic-bezier(.2,.9,.3,1.3);
   }
+  .toast.celebrate{background:linear-gradient(135deg,#2F6FED,#7B4FE0);font-weight:700;padding:12px 22px;}
+  @keyframes toast-in{from{opacity:0;transform:translate(-50%,14px) scale(.92);}to{opacity:1;transform:translate(-50%,0) scale(1);}}
+
+  /* Animated rings / bars / numbers — values tween from what was on screen before. */
+  .ring-progress{transition:stroke-dashoffset .9s cubic-bezier(.22,1,.36,1);}
+  .bar-fill,.water-fill{transition:width .8s cubic-bezier(.22,1,.36,1);}
+  @media (prefers-reduced-motion: reduce){ .ring-progress,.bar-fill,.water-fill{transition:none;} .toast{animation:none;} }
+
+  /* Swipe-to-delete rows */
+  .swipe-row{touch-action:pan-y;position:relative;transition:transform .18s ease, background-color .18s ease;}
+  .swipe-row.swiping{transition:none;}
+  .swipe-row.swipe-armed{background:var(--danger-soft);}
+  .swipe-row.swipe-armed::after{content:'Delete';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--danger);font-weight:700;font-size:12px;}
+
+  /* Daily tip */
+  .tip-card{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,var(--accent-soft),var(--surface));border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .tip-card .tip-ico{font-size:22px;line-height:1;flex:none;}
+  .tip-card .tip-body{flex:1;font-size:13.5px;line-height:1.45;}
+  .tip-card .tip-title{font-weight:700;font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+
+  /* Muscle map */
+  .muscle-map{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;}
+  .muscle-map svg{max-width:150px;width:42%;height:auto;}
+  .muscle-map .mlabel{font-size:10px;fill:var(--ink-faint);text-anchor:middle;}
+  .mm-legend{display:flex;align-items:center;gap:6px;justify-content:center;font-size:11px;color:var(--ink-soft);margin-top:8px;}
+  .mm-legend .sw{width:14px;height:10px;border-radius:3px;display:inline-block;}
+  .mm-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px 12px;margin-top:10px;font-size:12px;}
+  .mm-list span b{font-weight:700;}
+
+  /* Weekly recap + badges */
+  .recap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+  .recap-stat{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-md);padding:10px 12px;}
+  .recap-stat .rv{font-family:var(--font-display);font-weight:700;font-size:20px;}
+  .recap-stat .rl{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .recap-stat .rs{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;}
+  .badge{text-align:center;border:1px solid var(--line);border-radius:var(--radius-md);padding:10px 6px;background:var(--surface-2);}
+  .badge .bi{font-size:26px;line-height:1.1;}
+  .badge .bn{font-size:11.5px;font-weight:700;margin-top:4px;}
+  .badge .bp{font-size:10.5px;color:var(--ink-soft);margin-top:2px;}
+  .badge.locked{opacity:.55;}
+  .badge.locked .bi{filter:grayscale(1);}
+  .badge .bbar{height:4px;border-radius:3px;background:var(--bg-soft);margin:6px 6px 0;overflow:hidden;}
+  .badge .bbar i{display:block;height:100%;background:var(--accent);}
 
   .setup-shell{max-width:560px;margin:40px auto;padding:0 20px 60px;}
   .setup-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px 22px;box-shadow:var(--shadow);}
@@ -1361,6 +1414,47 @@ const ExerciseDB = (function(){
   const FR_TO_EN=new Map(BUILTIN.map(b=>[b.alt[0].toLowerCase(), b.name]));
   function frToEn(name){ return FR_TO_EN.get(String(name||'').trim().toLowerCase()) || null; }
 
+  // Which muscle groups an exercise trains (for the weekly muscle map). Built-ins are mapped by hand;
+  // wger items use wger's own muscle data; anything else falls back to its category.
+  const MUSCLE_GROUP={Shoulders:'shoulders',Biceps:'biceps',Brachialis:'biceps',Hamstrings:'hamstrings',Calves:'calves',Soleus:'calves',
+    Gastrocnemius:'calves',Glutes:'glutes',Lats:'lats',Chest:'chest','Serratus anterior':'chest',Quads:'quads',Abs:'abs',
+    'Obliquus externus abdominis':'obliques',Trapezius:'traps',Triceps:'triceps'};
+  const BUILTIN_MUSCLES={
+    'Bench Press':[['chest'],['shoulders','triceps']],'Incline Bench Press':[['chest','shoulders'],['triceps']],
+    'Dumbbell Bench Press':[['chest'],['shoulders','triceps']],'Dumbbell Fly':[['chest'],['shoulders']],
+    'Push-up':[['chest'],['triceps','shoulders']],'Dips':[['triceps','chest'],['shoulders']],
+    'Squat':[['quads','glutes'],['hamstrings']],'Front Squat':[['quads'],['glutes']],'Goblet Squat':[['quads','glutes'],[]],
+    'Leg Press':[['quads'],['glutes']],'Lunges':[['quads','glutes'],['hamstrings']],'Bulgarian Split Squat':[['quads','glutes'],['hamstrings']],
+    'Leg Extension':[['quads'],[]],'Leg Curl':[['hamstrings'],[]],'Standing Calf Raise':[['calves'],[]],
+    'Deadlift':[['hamstrings','glutes','lats'],['traps','quads']],'Romanian Deadlift':[['hamstrings','glutes'],['lats']],'Hip Thrust':[['glutes'],['hamstrings']],
+    'Pull-up':[['lats'],['biceps']],'Chin-up':[['lats','biceps'],[]],'Lat Pulldown':[['lats'],['biceps']],
+    'Barbell Row':[['lats','traps'],['biceps']],'Dumbbell Row':[['lats'],['biceps']],'Seated Cable Row':[['lats','traps'],['biceps']],
+    'Overhead Press':[['shoulders'],['triceps']],'Dumbbell Shoulder Press':[['shoulders'],['triceps']],'Lateral Raise':[['shoulders'],[]],
+    'Face Pull':[['shoulders','traps'],[]],'Rear Delt Fly':[['shoulders'],['traps']],
+    'Biceps Curl':[['biceps'],[]],'Hammer Curl':[['biceps'],[]],'Barbell Curl':[['biceps'],[]],
+    'Triceps Pushdown':[['triceps'],[]],'Skull Crusher':[['triceps'],[]],'Overhead Triceps Extension':[['triceps'],[]],
+    'Plank':[['abs'],['obliques']],'Crunch':[['abs'],[]],'Hanging Leg Raise':[['abs'],['obliques']],'Russian Twist':[['obliques'],['abs']]
+  };
+  const CATEGORY_FALLBACK={Chest:[['chest'],[]],Back:[['lats'],['biceps']],Shoulders:[['shoulders'],[]],Arms:[['biceps','triceps'],[]],
+    Legs:[['quads','hamstrings'],['glutes']],Abs:[['abs'],[]],Calves:[['calves'],[]],Glutes:[['glutes'],[]]};
+  let byName=null, byNameSize=-1;
+  function musclesFor(name){
+    const all=BUILTIN.concat((cache && cache.items) || []);
+    if(!byName || byNameSize!==all.length){
+      byName=new Map();
+      all.forEach(ex=>[ex.name].concat(ex.alt||[]).forEach(n=>{ const k=String(n).toLowerCase(); if(!byName.has(k)) byName.set(k,ex); }));
+      byNameSize=all.length;
+    }
+    const ex=byName.get(String(name||'').trim().toLowerCase());
+    if(!ex) return null;
+    if(ex.builtin && BUILTIN_MUSCLES[ex.name]){ const m=BUILTIN_MUSCLES[ex.name]; return { primary:m[0], secondary:m[1] }; }
+    const primary=[...new Set((ex.muscles||[]).map(m=>MUSCLE_GROUP[m]).filter(Boolean))];
+    const secondary=[...new Set((ex.musclesSecondary||[]).map(m=>MUSCLE_GROUP[m]).filter(Boolean))].filter(g=>!primary.includes(g));
+    if(primary.length) return { primary, secondary };
+    const fb=CATEGORY_FALLBACK[ex.category];
+    return fb ? { primary:fb[0], secondary:fb[1] } : null;
+  }
+
   function norm(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
 
   function search(query, limit){
@@ -1384,7 +1478,7 @@ const ExerciseDB = (function(){
     return scored.sort((a,b)=>a.score-b.score || a.ex.name.length-b.ex.name.length).slice(0,limit).map(s=>s.ex);
   }
 
-  return { loadCache, sync, status, search, frToEn };
+  return { loadCache, sync, status, search, frToEn, musclesFor };
 })();
 
 /* =========================================================
@@ -1526,16 +1620,60 @@ const State = {
   programOpenId:null,    // training opened from the list (null = list view)
   programDayPick:null,   // day chosen manually instead of the rotation's next day
   programEditor:null,    // draft program while creating/editing
-  programEditorFocus:null
+  programEditorFocus:null,
+  anim:{ counts:{}, widths:{}, ring:0 },
+  dailyTips:[], tipIndex:0,
+  weekRecap:null, badges:null, muscleWeek:null
 };
 
-function showToast(msg){
+function showToast(msg, celebrate){
   const existing=document.querySelector('.toast');
   if(existing) existing.remove();
   const t=document.createElement('div');
-  t.className='toast'; t.textContent=msg;
+  t.className='toast'+(celebrate?' celebrate':''); t.textContent=msg;
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(),2200);
+  setTimeout(()=>t.remove(), celebrate?3200:2200);
+}
+
+// Short vibrations so actions feel physical. The Vibration API works on Android browsers;
+// iOS Safari doesn't support it, so there it's silently a no-op.
+const HAPTICS={ tap:10, success:[12,40,12], remove:[25], pr:[20,60,20,60,60], badge:[30,50,30,50,30,50,90] };
+function haptic(kind){ try{ if(navigator.vibrate) navigator.vibrate(HAPTICS[kind]||10); }catch(e){} }
+
+const REDUCED_MOTION = (()=>{ try{ return matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return false; } })();
+// Elements rendered with data-count="key" data-to="number" tween from the value shown last time
+// (the full re-render on every action would otherwise make numbers jump).
+function animateCounters(){
+  const prev=State.anim.counts;
+  document.querySelectorAll('[data-count]').forEach(el=>{
+    const key=el.dataset.count, to=Number(el.dataset.to), dec=Number(el.dataset.dec||0), suffix=el.dataset.suffix||'';
+    const from = key in prev ? prev[key] : 0;
+    prev[key]=to;
+    const fmt=v=>(dec? v.toFixed(dec) : Math.round(v).toLocaleString())+suffix;
+    if(REDUCED_MOTION || from===to){ el.textContent=fmt(to); return; }
+    const start=performance.now(), dur=700;
+    let done=false;
+    const step=now=>{
+      if(done) return;
+      const k=Math.min(1,(now-start)/dur), e=1-Math.pow(1-k,3);
+      el.textContent=fmt(from+(to-from)*e);
+      if(k<1) requestAnimationFrame(step); else done=true;
+    };
+    el.textContent=fmt(from);
+    requestAnimationFrame(step);
+    // Animation frames can be paused (background tab, power saving) — never leave a stale number on screen.
+    setTimeout(()=>{ if(!done){ done=true; el.textContent=fmt(to); } }, dur+150);
+  });
+  // Rings and bars are rendered at their previous value; forcing a layout commits that start
+  // state, so setting the target right after makes the CSS transition run (no frame callback needed).
+  document.querySelectorAll('[data-anim-offset]').forEach(el=>{
+    void el.getBoundingClientRect();
+    el.setAttribute('stroke-dashoffset', el.dataset.animOffset);
+  });
+  document.querySelectorAll('[data-anim-width]').forEach(el=>{
+    void el.getBoundingClientRect();
+    el.style.width=el.dataset.animWidth;
+  });
 }
 
 /* =========================================================
@@ -1551,6 +1689,7 @@ async function boot(){
   State.programs = await Programs.getAll();
   State.programState = await Programs.getState();
   await render();
+  checkBadges(); // first run just records what's already earned
 }
 
 async function render(){
@@ -1566,9 +1705,47 @@ async function render(){
   ]);
   const weekTotals = await getWeekCalories(State.currentDate);
   if(State.activeTab==='progress') State.adaptive = await computeAdaptiveTDEE(State.profile, weightHistory);
+  if(State.activeTab==='workout') State.muscleWeek = await computeMuscleWeek(State.currentDate);
+  if(State.activeTab==='progress'){ State.weekRecap = await computeWeekRecap(weightHistory); State.badges = await computeBadges(); }
   if(State.activeTab==='today' && State.addPanel.open) State.recentFoods = await computeRecentFoods(State.currentDate, 8);
+  if(State.activeTab==='today') State.dailyTips = Utils.isSameDay(State.currentDate,new Date()) ? await computeDailyTips(entries, water, weightHistory) : [];
   app.innerHTML = renderShell(dateKey, entries, workout, water, weekTotals, weightHistory);
   wireShell(dateKey, entries, workout, water, weightHistory);
+  animateCounters();
+  enableSwipeDelete();
+}
+
+// Swipe a food entry or a set left to delete it (touch only; the × button still works everywhere).
+// Rows use touch-action:pan-y so vertical scrolling is untouched; a mostly-horizontal drag past 80px deletes.
+function enableSwipeDelete(){
+  document.querySelectorAll('.swipe-row').forEach(row=>{
+    let x0=null, y0=0, dx=0, active=false;
+    row.addEventListener('pointerdown', e=>{ if(e.pointerType==='mouse') return; x0=e.clientX; y0=e.clientY; dx=0; active=false; });
+    row.addEventListener('pointermove', e=>{
+      if(x0==null) return;
+      const mx=e.clientX-x0, my=e.clientY-y0;
+      if(!active){
+        if(Math.abs(my)>12 && Math.abs(my)>Math.abs(mx)){ x0=null; return; } // it's a scroll
+        if(mx<-10 && Math.abs(mx)>Math.abs(my)*1.5){ active=true; row.classList.add('swiping'); try{ row.setPointerCapture(e.pointerId); }catch(_){} }
+        else return;
+      }
+      dx=Math.min(0,mx);
+      row.style.transform=`translateX(${dx}px)`;
+      row.classList.toggle('swipe-armed', dx<-80);
+    });
+    const end=()=>{
+      if(x0==null) return;
+      x0=null; row.classList.remove('swiping');
+      if(active && dx<-80){
+        row.style.transform='translateX(-110%)';
+        const del=row.querySelector('.del');
+        setTimeout(()=>{ if(del) del.click(); }, 160);
+      } else { row.style.transform=''; row.classList.remove('swipe-armed'); }
+      active=false;
+    };
+    row.addEventListener('pointerup', end);
+    row.addEventListener('pointercancel', end);
+  });
 }
 
 /* =========================================================
@@ -1768,13 +1945,15 @@ async function computeRecentFoods(anchorDate, limit){
 /* =========================================================
    SHELL / DASHBOARD RENDER
    ========================================================= */
-function ringSvg(pct, color){
+function ringSvg(pct, color, fromPct){
   pct=Utils.clamp(pct,0,1);
   const r=52, c=2*Math.PI*r, offset=c*(1-pct);
+  // Drawn at the previous value, then tweened to the new one by animateCounters().
+  const start = (fromPct==null || REDUCED_MOTION) ? offset : c*(1-Utils.clamp(fromPct,0,1));
   return `<svg width="126" height="126" viewBox="0 0 126 126">
     <circle cx="63" cy="63" r="${r}" fill="none" stroke="var(--bg-soft)" stroke-width="12"/>
-    <circle cx="63" cy="63" r="${r}" fill="none" stroke="${color}" stroke-width="12"
-      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"/>
+    <circle class="ring-progress" cx="63" cy="63" r="${r}" fill="none" stroke="${color}" stroke-width="12"
+      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${start}" data-anim-offset="${offset}"/>
   </svg>`;
 }
 
@@ -1824,6 +2003,10 @@ function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxW
     {key:'fat', label:'Fat', color:'var(--fat)', val:totals.fat, goal:goals.fat}
   ];
   const waterPct = goals.waterMl>0 ? water.ml/goals.waterMl : 0;
+  const prevRing=State.anim.ring; State.anim.ring=calPct;
+  // Bars start at the width shown last time so a change slides instead of jumping.
+  const w=State.anim.widths;
+  const barStart=(key,pct)=>{ const from = key in w ? w[key] : 0; w[key]=pct; return REDUCED_MOTION ? pct : from; };
 
   return `
     <div class="datebar">
@@ -1834,18 +2017,19 @@ function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxW
       </div>
       ${Utils.dateKey(State.currentDate)!==Utils.dateKey(new Date()) ? `<button class="today-pill" id="date-today">Jump to today</button>` : ''}
     </div>
+    ${renderDailyTip()}
 
     <div class="grid overview">
       <div class="card">
         <div class="card-head">
-          <div><p class="card-title">Nutrition</p><p class="card-sub">${totals.calories} of ${goals.calories} kcal · ${Utils.roundInt(calPct*100)}%</p></div>
+          <div><p class="card-title">Nutrition</p><p class="card-sub"><span data-count="kcal" data-to="${Utils.roundInt(totals.calories)}">${Utils.roundInt(totals.calories)}</span> of ${goals.calories} kcal · ${Utils.roundInt(calPct*100)}%</p></div>
         </div>
         <div class="ring-row">
           <div class="ring-wrap">
-            ${ringSvg(calPct, 'var(--accent)')}
+            ${ringSvg(calPct, 'var(--accent)', prevRing)}
             <div class="ring-center">
-              <div class="ring-num">${Utils.roundInt(calPct*100)}%</div>
-              <div class="ring-lbl">${Utils.roundInt(Math.max(0,goals.calories-totals.calories))} kcal left</div>
+              <div class="ring-num" data-count="ringpct" data-to="${Utils.roundInt(calPct*100)}" data-suffix="%">${Utils.roundInt(calPct*100)}%</div>
+              <div class="ring-lbl"><span data-count="kcalleft" data-to="${Utils.roundInt(Math.max(0,goals.calories-totals.calories))}">${Utils.roundInt(Math.max(0,goals.calories-totals.calories))}</span> kcal left</div>
             </div>
           </div>
           <div class="macro-list">
@@ -1854,7 +2038,7 @@ function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxW
               return `<div class="macro-row">
                 <span class="swatch" style="background:${m.color}"></span>
                 <span style="width:52px;flex:none;">${m.label}</span>
-                <span class="bar-track"><span class="bar-fill" style="width:${pct*100}%;background:${m.color}"></span></span>
+                <span class="bar-track"><span class="bar-fill" style="width:${barStart('m_'+m.key,pct)*100}%;background:${m.color}" data-anim-width="${pct*100}%"></span></span>
                 <span class="amt">${Utils.roundInt(m.val)}/${m.goal}g · ${Utils.roundInt(pct*100)}%</span>
               </div>`;
             }).join('')}
@@ -1875,8 +2059,8 @@ function renderTodayTab(dateKey, entries, totals, goals, water, weekTotals, maxW
         <div class="card-head">
           <div><p class="card-title">Water</p><p class="card-sub">Goal: ${Math.round(goals.waterMl/1000*10)/10} L</p></div>
         </div>
-        <div class="amount">${Math.round(water.ml/10)/100} L</div>
-        <div class="water-track"><div class="water-fill" style="width:${Utils.clamp(waterPct*100,0,100)}%"></div></div>
+        <div class="amount"><span data-count="water" data-to="${water.ml/1000}" data-dec="2">${Math.round(water.ml/10)/100}</span> L</div>
+        <div class="water-track"><div class="water-fill" style="width:${barStart('water',Utils.clamp(waterPct,0,1))*100}%" data-anim-width="${Utils.clamp(waterPct*100,0,100)}%"></div></div>
         <div class="water-btns">
           <button class="chip-btn" data-water="250">+250 ml</button>
           <button class="chip-btn" data-water="500">+500 ml</button>
@@ -1928,7 +2112,7 @@ function renderEntryRow(e){
   const metaParts=[];
   if(e.quantity && e.unit) metaParts.push(`${e.quantity} ${e.unit}`);
   metaParts.push(`P${Utils.roundInt(e.protein)} C${Utils.roundInt(e.carbs)} F${Utils.roundInt(e.fat)}`);
-  return `<div class="entry" data-entry-id="${e.id}">
+  return `<div class="entry swipe-row" data-entry-id="${e.id}">
     <div class="info">
       <div class="ename">${Utils.esc(e.name)}</div>
       <div class="emeta"><span class="tag ${tagClass}">${tagLabel}</span><span>${Utils.esc(metaParts.join(' · '))}</span></div>
@@ -2245,6 +2429,7 @@ function renderWorkoutTab(dateKey, workout){
         <div id="pr-list" class="pr-list"><div class="empty">Loading…</div></div>
       </div>
     </div>
+    ${renderMuscleMap()}
   `;
 }
 
@@ -2264,12 +2449,12 @@ function renderExercise(ex){
     </div>
     <div class="sets">
       ${ex.sets.map((s,i)=> isCardio ? `
-        <div class="setrow">
+        <div class="setrow swipe-row">
           <span class="sn">${i+1}</span>
           <span class="sd">${s.distanceKm!=null?Utils.round(s.distanceKm,2)+' km':''}${s.durationSec!=null?` in ${Calc.formatDuration(s.durationSec)}`:''}${(s.distanceKm&&s.durationSec)?` · ${Calc.formatPace(s.durationSec,s.distanceKm)}`:''}</span>
           <button class="del" data-del-set="${ex.id}|${s.id}">×</button>
         </div>` : `
-        <div class="setrow">
+        <div class="setrow swipe-row">
           <span class="sn">${i+1}</span>
           <span class="sd">${s.reps!=null?`${s.reps} reps`:''}${s.weight!=null?` @ ${s.weight}${s.weightUnit||'lb'}`:''}</span>
           <button class="del" data-del-set="${ex.id}|${s.id}">×</button>
@@ -2280,6 +2465,7 @@ function renderExercise(ex){
       <input type="number" min="0" step="0.01" placeholder="Distance (km)" class="setinput" data-field="distance" data-exid="${ex.id}" value="${Utils.esc(draft.distance||'')}"/>
       <input type="number" min="0" step="0.5" placeholder="Time (min)" class="setinput" data-field="duration" data-exid="${ex.id}" value="${Utils.esc(draft.duration||'')}"/>
       <button class="btn secondary" data-add-set="${ex.id}">+ Log</button>
+      <button class="btn secondary" data-repeat-set="${ex.id}" title="Same as last time">↻</button>
     </div>` : `
     <div class="addset-row">
       <input type="number" min="1" placeholder="Reps" class="setinput" data-field="reps" data-exid="${ex.id}" value="${Utils.esc(draft.reps||'')}"/>
@@ -2288,6 +2474,7 @@ function renderExercise(ex){
         ${['lb','kg'].map(u=>`<option value="${u}" ${unit===u?'selected':''}>${u}</option>`).join('')}
       </select>
       <button class="btn secondary" data-add-set="${ex.id}">+ Set</button>
+      <button class="btn secondary" data-repeat-set="${ex.id}" title="Same as last set">↻</button>
     </div>`}
   </div>`;
 }
@@ -2362,6 +2549,326 @@ async function renderComparisonsInto(dateKey, entries){
     el.textContent = ` · ${arrow} ${Math.abs(Math.round(pct))}% ${label} vs ${Utils.prettyDate(Utils.parseDateKey(prev.dateKey))}`;
     el.style.color = pct>=0 ? 'var(--success)' : 'var(--danger)';
   });
+}
+
+/* =========================================================
+   HISTORY SCAN — one pass over every logged day, shared by the
+   weekly recap and the badges.
+   ========================================================= */
+const setKg=st=> st.weight>0 ? (st.weightUnit==='kg' ? st.weight : Utils.lbToKg(st.weight)) : 0;
+async function scanHistory(){
+  const days={}; // dateKey -> { cal, protein, foods, sets, volumeKg, bests:{name:{estKg,weight,reps,unit}}, lifts:{name:maxKg} }
+  const day=k=>days[k]||(days[k]={ cal:0, protein:0, foods:0, sets:0, volumeKg:0, bests:{}, lifts:{} });
+  for(const key of await Store.list('log:')){
+    const dk=key.slice(4); if(!Utils.isValidDateKey(dk)) continue;
+    const entries=await DayLog.get(dk); if(!entries.length) continue;
+    const t=Calc.totals(entries), d=day(dk);
+    d.cal=t.calories; d.protein=t.protein; d.foods=entries.length;
+  }
+  for(const key of await Store.list('workout:')){
+    const dk=key.slice(8); if(!Utils.isValidDateKey(dk)) continue;
+    const w=await WorkoutLog.get(dk);
+    w.entries.forEach(ex=>{
+      if(ex.category==='cardio') return;
+      ex.sets.forEach(st=>{
+        if(!(st.reps>0)) return;
+        const d=day(dk);
+        d.sets++; d.volumeKg+=st.reps*(setKg(st)||0);
+        const b=Calc.bestSetSummary([st]);
+        if(b && (!d.bests[ex.exerciseName] || b.estKg>d.bests[ex.exerciseName].estKg)) d.bests[ex.exerciseName]={ estKg:b.estKg, weight:st.weight, reps:st.reps, unit:st.weightUnit };
+        d.lifts[ex.exerciseName]=Math.max(d.lifts[ex.exerciseName]||0, setKg(st));
+      });
+    });
+  }
+  return days;
+}
+function streakInfo(days, test){
+  const keys=Object.keys(days).filter(k=>test(days[k])).sort();
+  let longest=0, run=0, prev=null;
+  keys.forEach(k=>{
+    run = prev && Utils.dateKey(Utils.addDays(Utils.parseDateKey(prev),1))===k ? run+1 : 1;
+    longest=Math.max(longest,run); prev=k;
+  });
+  // Current streak may end today or yesterday (today isn't over yet).
+  let cur=0, d=new Date();
+  if(!keys.includes(Utils.dateKey(d))) d=Utils.addDays(d,-1);
+  while(keys.includes(Utils.dateKey(d))){ cur++; d=Utils.addDays(d,-1); }
+  return { longest, current:cur };
+}
+
+/* ---------- Weekly recap ---------- */
+async function computeWeekRecap(weightHistory){
+  const days=await scanHistory();
+  const today=new Date(), todayKey=Utils.dateKey(today);
+  const keysBack=(from,n)=>Array.from({length:n},(_,i)=>Utils.dateKey(Utils.addDays(today,-(from+i))));
+  const week=keysBack(0,7), prevWeek=keysBack(7,7);
+  const sum=(ks,f)=>ks.reduce((a,k)=>a+(days[k]?f(days[k]):0),0);
+  const workouts=week.filter(k=>days[k] && days[k].sets>0).length;
+  const volume=sum(week,d=>d.volumeKg), prevVolume=sum(prevWeek,d=>d.volumeKg);
+  const foodDays=week.filter(k=>k!==todayKey && days[k] && days[k].foods>0); // completed days only
+  const g=State.profile.goals;
+  const avgCal=foodDays.length ? sum(foodDays,d=>d.cal)/foodDays.length : null;
+  const avgProt=foodDays.length ? sum(foodDays,d=>d.protein)/foodDays.length : null;
+  const protHit=foodDays.filter(k=>days[k].protein>=g.protein).length;
+  // New PRs: best set this week beats everything before the week.
+  const before={}, during={};
+  Object.keys(days).forEach(k=>{
+    const target = week.includes(k) ? during : (k<week[6] ? before : null);
+    if(!target) return;
+    Object.entries(days[k].bests).forEach(([n,b])=>{ if(!target[n] || b.estKg>target[n].estKg) target[n]=b; });
+  });
+  const prs=Object.entries(during).filter(([n,b])=>before[n] && b.estKg>before[n].estKg+0.01).map(([n,b])=>({ name:n, ...b }));
+  const ws=weightHistory.filter(e=>e.weightKg!=null && e.date>=week[6]);
+  const weightChange = ws.length>=2 ? ws[ws.length-1].weightKg-ws[0].weightKg : null;
+  const streak=streakInfo(days, d=>d.foods>0).current;
+  return { range:[week[6], todayKey], workouts, volume, prevVolume, avgCal, avgProt, protHit, foodDays:foodDays.length, prs, weightChange, streak };
+}
+
+function recapShareText(r){
+  const lines=[`PULSE — my week (${Utils.prettyDate(Utils.parseDateKey(r.range[0]))} → ${Utils.prettyDate(Utils.parseDateKey(r.range[1]))})`,
+    `🏋️ ${r.workouts} workout${r.workouts===1?'':'s'} · ${Math.round(r.volume).toLocaleString()} kg lifted`];
+  if(r.avgCal!=null) lines.push(`🍽️ ${Math.round(r.avgCal)} kcal/day avg · ${Math.round(r.avgProt)} g protein`);
+  if(r.weightChange!=null) lines.push(`⚖️ ${r.weightChange>0?'+':''}${Utils.round(r.weightChange,1)} kg`);
+  if(r.prs.length) lines.push(`🏆 New PR${r.prs.length>1?'s':''}: ${r.prs.map(p=>`${p.name} ${p.weight}${p.unit}×${p.reps}`).join(', ')}`);
+  if(r.streak>1) lines.push(`🔥 ${r.streak}-day logging streak`);
+  return lines.join('\n');
+}
+
+function renderWeekRecap(){
+  const r=State.weekRecap; if(!r) return '';
+  const g=State.profile.goals;
+  const volDelta = r.prevVolume>0 ? Math.round((r.volume-r.prevVolume)/r.prevVolume*100) : null;
+  const stat=(label,value,sub)=>`<div class="recap-stat"><div class="rl">${label}</div><div class="rv">${value}</div>${sub?`<div class="rs">${sub}</div>`:''}</div>`;
+  return `
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-head">
+      <div><p class="card-title">Your week</p><p class="card-sub">${Utils.esc(Utils.prettyDate(Utils.parseDateKey(r.range[0])))} → ${Utils.esc(Utils.prettyDate(Utils.parseDateKey(r.range[1])))}</p></div>
+      <button class="btn secondary" id="recap-share">Share</button>
+    </div>
+    <div class="recap-grid">
+      ${stat('Workouts', r.workouts, r.workouts ? `${Math.round(r.volume).toLocaleString()} kg lifted${volDelta!=null?` · ${volDelta>=0?'▲':'▼'} ${Math.abs(volDelta)}%`:''}` : 'No sets logged yet')}
+      ${stat('Calories', r.avgCal!=null ? Math.round(r.avgCal) : '—', r.avgCal!=null ? `avg/day · goal ${g.calories}` : 'Log a full day of food')}
+      ${stat('Protein', r.avgProt!=null ? Math.round(r.avgProt)+' g' : '—', r.foodDays ? `goal hit ${r.protHit}/${r.foodDays} days` : '')}
+      ${stat('Weight', r.weightChange!=null ? `${r.weightChange>0?'+':''}${Utils.round(r.weightChange,1)} kg` : '—', r.weightChange!=null ? 'this week' : 'Weigh in twice to see it')}
+      ${stat('Streak', r.streak ? `🔥 ${r.streak}` : '—', 'days of food logged')}
+      ${stat('New PRs', r.prs.length ? `🏆 ${r.prs.length}` : '—', r.prs.length ? Utils.esc(r.prs.slice(0,2).map(p=>`${p.name} ${p.weight}${p.unit}×${p.reps}`).join(' · ')) : 'Beat a record to see it here')}
+    </div>
+  </div>`;
+}
+
+/* ---------- Badges ---------- */
+const BADGES=[
+  { id:'first_workout', icon:'🏋️', name:'First workout', target:1,     metric:m=>m.workoutDays },
+  { id:'workouts_10',   icon:'💪', name:'10 workouts',   target:10,    metric:m=>m.workoutDays },
+  { id:'workouts_50',   icon:'🦾', name:'50 workouts',   target:50,    metric:m=>m.workoutDays },
+  { id:'streak_7',      icon:'🔥', name:'7-day streak',  target:7,     metric:m=>m.foodStreak, unit:'days' },
+  { id:'streak_30',     icon:'🌋', name:'30-day streak', target:30,    metric:m=>m.foodStreak, unit:'days' },
+  { id:'foods_100',     icon:'🍽️', name:'100 foods logged', target:100, metric:m=>m.foods },
+  { id:'protein_7',     icon:'🥩', name:'Protein goal 7 days straight', target:7, metric:m=>m.proteinStreak, unit:'days' },
+  { id:'volume_10k',    icon:'🏗️', name:'10,000 kg in a week', target:10000, metric:m=>m.bestWeekVolume, unit:'kg' },
+  { id:'bench_100',     icon:'🏆', name:'100 kg bench',  target:100,   metric:m=>m.lift('Bench Press'), unit:'kg' },
+  { id:'squat_140',     icon:'🦵', name:'140 kg squat',  target:140,   metric:m=>m.lift('Squat'), unit:'kg' },
+  { id:'deadlift_180',  icon:'⚡', name:'180 kg deadlift', target:180, metric:m=>m.lift('Deadlift'), unit:'kg' },
+  { id:'weigh_10',      icon:'⚖️', name:'10 weigh-ins',  target:10,    metric:m=>m.weighIns }
+];
+async function computeBadges(){
+  const days=await scanHistory();
+  const keys=Object.keys(days).sort();
+  const goal=State.profile.goals.protein;
+  const lifts={};
+  keys.forEach(k=>Object.entries(days[k].lifts).forEach(([n,kg])=>{ lifts[n.toLowerCase()]=Math.max(lifts[n.toLowerCase()]||0,kg); }));
+  let bestWeekVolume=0;
+  keys.forEach(k=>{ // rolling 7-day window ending on each logged day
+    let v=0; for(let i=0;i<7;i++){ const d=days[Utils.dateKey(Utils.addDays(Utils.parseDateKey(k),-i))]; if(d) v+=d.volumeKg; }
+    bestWeekVolume=Math.max(bestWeekVolume,v);
+  });
+  const m={
+    workoutDays: keys.filter(k=>days[k].sets>0).length,
+    foods: keys.reduce((a,k)=>a+days[k].foods,0),
+    foodStreak: streakInfo(days,d=>d.foods>0).longest,
+    proteinStreak: streakInfo(days,d=>d.foods>0 && d.protein>=goal).longest,
+    bestWeekVolume,
+    lift: n=>lifts[n.toLowerCase()]||0,
+    weighIns: (await WeightLog.getAll()).filter(e=>e.weightKg!=null).length
+  };
+  return BADGES.map(b=>{ const v=b.metric(m); return { ...b, value:v, earned:v>=b.target }; });
+}
+function renderBadges(){
+  const list=State.badges; if(!list) return '';
+  const earned=list.filter(b=>b.earned).length;
+  const fmt=(v,b)=> b.unit==='kg' ? `${Math.round(v).toLocaleString()} / ${b.target.toLocaleString()} kg` : `${Math.floor(v)} / ${b.target}`;
+  return `
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div><p class="card-title">Badges</p><p class="card-sub">${earned} of ${list.length} unlocked</p></div></div>
+    <div class="badge-grid">${list.map(b=>`
+      <div class="badge ${b.earned?'':'locked'}" title="${Utils.esc(b.name)}">
+        <div class="bi">${b.icon}</div><div class="bn">${Utils.esc(b.name)}</div>
+        ${b.earned ? `<div class="bp">Unlocked ✓</div>` : `<div class="bbar"><i style="width:${Math.min(100,b.value/b.target*100)}%"></i></div><div class="bp">${fmt(b.value,b)}</div>`}
+      </div>`).join('')}</div>
+  </div>`;
+}
+// Celebrates badges earned since last check. The first run only records what's already
+// earned, so existing users aren't flooded with "unlocked" banners for old progress.
+let badgeCheckRunning=false;
+async function checkBadges(){
+  if(badgeCheckRunning || !State.profile) return;
+  badgeCheckRunning=true;
+  try{
+    const list=await computeBadges();
+    const now=list.filter(b=>b.earned).map(b=>b.id);
+    const seen=await Store.get('badges_earned', null);
+    if(seen){
+      const fresh=list.filter(b=>b.earned && !seen.includes(b.id));
+      if(fresh.length){ haptic('badge'); showToast(`🏅 Badge unlocked: ${fresh.map(b=>b.icon+' '+b.name).join(', ')}`, true); }
+    }
+    await Store.set('badges_earned', Array.from(new Set((seen||[]).concat(now))));
+  } finally { badgeCheckRunning=false; }
+}
+
+/* =========================================================
+   DAILY COACH TIP — rule-based, from the user's own data (no AI
+   needed). Ordered by what's most actionable right now.
+   ========================================================= */
+const GROUP_IDEAS={ chest:'Bench Press or Push-ups', lats:'Pull-ups or Lat Pulldown', quads:'Squats or Leg Press',
+  hamstrings:'Romanian Deadlift or Leg Curl', shoulders:'Overhead Press or Lateral Raises', glutes:'Hip Thrusts or Lunges' };
+const GENERAL_TIPS=[
+  ['💡','Aim for 1.6–2.2 g of protein per kg of body weight — spread over 3–4 meals.'],
+  ['😴','7–9 hours of sleep does more for recovery than any supplement.'],
+  ['📈','Progressive overload: add one rep or a little weight each week, not every session.'],
+  ['🥦','Fill half your plate with vegetables — lots of volume, few calories.'],
+  ['⏱️','Rest 2–3 minutes between heavy sets; 60–90 s is enough for isolation work.'],
+  ['⚖️','Weigh yourself at the same time each morning — the trend matters, not the day.'],
+  ['💧','Thirst is often mistaken for hunger — drink a glass of water first.']
+];
+async function computeDailyTips(entries, water, weightHistory){
+  const tips=[], g=State.profile.goals, hour=new Date().getHours(), t=Calc.totals(entries);
+  const today=new Date();
+  // Most protein-dense thing the user actually eats, for a concrete suggestion.
+  let proteinPick=null;
+  for(let i=1;i<=21;i++){
+    (await DayLog.get(Utils.dateKey(Utils.addDays(today,-i)))).forEach(e=>{
+      if(e.protein>=15 && (!proteinPick || e.protein>proteinPick.protein)) proteinPick=e;
+    });
+  }
+  const proteinGap=Math.round(g.protein-t.protein);
+  if(hour>=13 && entries.length && t.protein<g.protein*0.6)
+    tips.push(['🥩', `You're ${proteinGap} g short on protein today.${proteinPick?` ${proteinPick.name} would add about ${Math.round(proteinPick.protein)} g.`:' A lean meat, Greek yogurt or a shake would close the gap.'}`]);
+  if(hour>=15 && water.ml<g.waterMl*0.5)
+    tips.push(['💧', `${((g.waterMl-water.ml)/1000).toFixed(1)} L of water to go today — a glass now makes it easier.`]);
+  if(t.calories>g.calories*1.1)
+    tips.push(['🧘', `You're ${Math.round(t.calories-g.calories)} kcal over today. No stress — your 7-day average is what counts, not one day.`]);
+  const days=await scanHistory();
+  const keys=Object.keys(days).sort();
+  // Stalled lift: last 3 sessions of an exercise didn't beat the one before them, over 10+ days.
+  const sessions={};
+  keys.forEach(k=>Object.entries(days[k].bests).forEach(([n,b])=>{ (sessions[n]=sessions[n]||[]).push({ k, est:b.estKg }); }));
+  const stalled=Object.entries(sessions).find(([n,arr])=>{
+    if(arr.length<4) return false;
+    const last=arr.slice(-4), base=last[0].est;
+    const spanDays=(Utils.parseDateKey(last[3].k)-Utils.parseDateKey(last[0].k))/86400000;
+    return spanDays>=10 && last.slice(1).every(x=>x.est<=base+0.01);
+  });
+  if(stalled) tips.push(['📉', `${stalled[0]} hasn't improved in 3 sessions. Try a deload week (−10% weight) or a new rep range for 2 weeks.`]);
+  const mw=await computeMuscleWeek(today);
+  if(mw.workouts>=2){
+    const missing=Object.keys(GROUP_IDEAS).filter(gp=>mw.sets[gp]===0);
+    if(missing.length){ const gp=missing[0], lbl=Object.fromEntries(MUSCLE_GROUPS)[gp]; tips.push(['🎯', `No ${lbl.toLowerCase()} work this week — try ${GROUP_IDEAS[gp]}.`]); }
+  }
+  const workoutKeys=keys.filter(k=>days[k].sets>0);
+  if(workoutKeys.length){
+    const since=Math.round((Utils.parseDateKey(Utils.dateKey(today))-Utils.parseDateKey(workoutKeys[workoutKeys.length-1]))/86400000);
+    if(since>=4) tips.push(['🏃', `It's been ${since} days since your last workout. Even 30 minutes today keeps the momentum.`]);
+  }
+  const weighed=weightHistory.filter(e=>e.weightKg!=null);
+  const lastW=weighed.length ? weighed[weighed.length-1].date : null;
+  if(!lastW || (Utils.parseDateKey(Utils.dateKey(today))-Utils.parseDateKey(lastW))/86400000>=7)
+    tips.push(['⚖️', 'Weigh in tomorrow morning — it keeps your adaptive maintenance accurate.']);
+  if(!entries.length && hour>=10) tips.push(['🍳', 'Log your first meal — tracking early makes the rest of the day easier.']);
+  const streak=streakInfo(days, d=>d.foods>0).current;
+  if(streak>=3) tips.push(['🔥', `${streak}-day logging streak! Log something today to keep it alive.`]);
+  const doy=Math.floor((today-new Date(today.getFullYear(),0,0))/86400000);
+  tips.push(GENERAL_TIPS[doy%GENERAL_TIPS.length]);
+  return tips;
+}
+function renderDailyTip(){
+  const tips=State.dailyTips;
+  if(!tips || !tips.length) return '';
+  const [icon,text]=tips[State.tipIndex%tips.length];
+  return `
+  <div class="tip-card">
+    <div class="tip-ico">${icon}</div>
+    <div class="tip-body"><div class="tip-title">Coach tip</div>${Utils.esc(text)}</div>
+    ${tips.length>1 ? `<button class="link-btn" id="tip-next" title="Next tip">Next ›</button>` : ''}
+  </div>`;
+}
+
+/* =========================================================
+   MUSCLE MAP — sets per muscle group over the last 7 days, drawn
+   on a front/back body. Secondary muscles count half a set.
+   ========================================================= */
+const MUSCLE_GROUPS=[['chest','Chest'],['shoulders','Shoulders'],['biceps','Biceps'],['triceps','Triceps'],['abs','Abs'],['obliques','Obliques'],
+  ['lats','Back'],['traps','Traps'],['glutes','Glutes'],['quads','Quads'],['hamstrings','Hamstrings'],['calves','Calves']];
+async function computeMuscleWeek(anchor){
+  const sets=Object.fromEntries(MUSCLE_GROUPS.map(([k])=>[k,0]));
+  let workouts=0;
+  for(let i=0;i<7;i++){
+    const w=await WorkoutLog.get(Utils.dateKey(Utils.addDays(anchor,-i)));
+    let trained=false;
+    w.entries.forEach(ex=>{
+      if(ex.category==='cardio') return;
+      const n=ex.sets.filter(st=>st.reps>0 || st.weight>0).length;
+      if(!n) return;
+      trained=true;
+      const m=ExerciseDB.musclesFor(ex.exerciseName);
+      if(!m) return;
+      m.primary.forEach(g=>{ sets[g]+=n; });
+      m.secondary.forEach(g=>{ sets[g]+=n*0.5; });
+    });
+    if(trained) workouts++;
+  }
+  return { sets, workouts };
+}
+
+function renderMuscleMap(){
+  const mw=State.muscleWeek;
+  if(!mw) return '';
+  const label=Object.fromEntries(MUSCLE_GROUPS);
+  // ~10-20 hard sets/week is the usual hypertrophy range, so 12+ reads as "fully lit".
+  const fill=g=>{ const v=mw.sets[g]; return v>0 ? `fill="var(--accent)" fill-opacity="${(0.25+0.75*Math.min(v/12,1)).toFixed(2)}"` : 'fill="var(--bg-soft)"'; };
+  const tip=g=>`<title>${label[g]}: ${Utils.round(mw.sets[g],1)} sets</title>`;
+  const pair=(g,shape)=>`<g ${fill(g)} stroke="var(--line-strong)" stroke-width=".6">${tip(g)}${shape}</g>`;
+  const E=(cx,cy,rx,ry)=>`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/><ellipse cx="${120-cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>`;
+  const body=`<g fill="var(--surface-2)" stroke="var(--line-strong)" stroke-width=".8">
+      <circle cx="60" cy="20" r="13"/><rect x="54" y="31" width="12" height="9"/>
+      <rect x="34" y="40" width="52" height="72" rx="16"/><rect x="38" y="104" width="44" height="28" rx="10"/>
+      <rect x="17" y="44" width="15" height="48" rx="7"/><rect x="88" y="44" width="15" height="48" rx="7"/>
+      <rect x="12" y="90" width="13" height="46" rx="6"/><rect x="95" y="90" width="13" height="46" rx="6"/>
+      <rect x="38" y="128" width="21" height="70" rx="10"/><rect x="61" y="128" width="21" height="70" rx="10"/>
+      <rect x="40" y="196" width="17" height="58" rx="8"/><rect x="63" y="196" width="17" height="58" rx="8"/></g>`;
+  const front=`<svg viewBox="0 0 120 272" role="img" aria-label="Front muscles">${body}
+      ${pair('shoulders',E(34,50,9,8))}${pair('chest',E(49,61,12,9))}${pair('biceps',E(24,68,6,13))}
+      ${pair('abs','<rect x="52" y="73" width="16" height="33" rx="5"/>')}${pair('obliques',E(43,90,5,13))}
+      ${pair('quads',E(48,158,9,26))}${pair('calves',E(48,220,6,16))}
+      <text class="mlabel" x="60" y="270">Front</text></svg>`;
+  const back=`<svg viewBox="0 0 120 272" role="img" aria-label="Back muscles">${body}
+      ${pair('traps','<polygon points="60,34 77,46 60,64 43,46"/>')}${pair('shoulders',E(34,50,9,8))}${pair('lats',E(46,79,10,18))}
+      ${pair('triceps',E(24,68,6,13))}${pair('glutes',E(50,124,10,10))}${pair('hamstrings',E(48,162,8,24))}${pair('calves',E(48,220,7,17))}
+      <text class="mlabel" x="60" y="270">Back</text></svg>`;
+  const ranked=MUSCLE_GROUPS.map(([k,l])=>({k,l,v:mw.sets[k]})).sort((a,b)=>b.v-a.v);
+  const missed=ranked.filter(r=>r.v===0).map(r=>r.l);
+  return `
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div><p class="card-title">Muscles this week</p>
+      <p class="card-sub">Last 7 days · ${mw.workouts} workout${mw.workouts===1?'':'s'} · sets per muscle (secondary muscles count half)</p></div></div>
+    <div class="muscle-map">${front}${back}</div>
+    <div class="mm-legend"><span class="sw" style="background:var(--bg-soft)"></span>0
+      <span class="sw" style="background:var(--accent);opacity:.35"></span>1–5
+      <span class="sw" style="background:var(--accent);opacity:.65"></span>6–11
+      <span class="sw" style="background:var(--accent)"></span>12+ sets</div>
+    <div class="mm-list">${ranked.filter(r=>r.v>0).map(r=>`<span>${r.l} <b>${Utils.round(r.v,1)}</b></span>`).join('')}</div>
+    ${mw.workouts && missed.length ? `<div class="status-line">Not trained this week: ${missed.join(', ')}</div>` : ''}
+    ${!mw.workouts ? `<div class="status-line">Log some sets and the muscles you train will light up here.</div>` : ''}
+  </div>`;
 }
 
 /* =========================================================
@@ -2541,6 +3048,7 @@ function renderProgressTab(weightHistory){
 
   return `
     ${renderAdaptiveCard()}
+    ${renderWeekRecap()}
     <div class="grid two">
       <div class="card">
         <div class="card-head">
@@ -2590,6 +3098,7 @@ function renderProgressTab(weightHistory){
           : `<div class="empty">No entries yet — log your weight above to start tracking.</div>`}
       </div>
     </div>
+    ${renderBadges()}
   `;
 }
 
@@ -2959,8 +3468,9 @@ function wireProgressTab(weightHistory){
     const todayKey=Utils.dateKey(new Date());
     await WeightLog.upsert(todayKey, draft.weightKg, draft.bodyFatPct);
     State.progressDraft={ weightKg:'', bodyFatPct:'' };
-    showToast('Progress logged');
+    showToast('Progress logged'); haptic('success');
     await render();
+    checkBadges();
   });
 
   document.querySelectorAll('[data-del-weight]').forEach(btn=>{
@@ -2969,6 +3479,15 @@ function wireProgressTab(weightHistory){
       showToast('Entry removed');
       await render();
     });
+  });
+
+  const shareBtn=document.getElementById('recap-share');
+  if(shareBtn) shareBtn.addEventListener('click', async ()=>{
+    const text=recapShareText(State.weekRecap);
+    try{
+      if(navigator.share){ await navigator.share({ title:'My PULSE week', text }); return; }
+      await navigator.clipboard.writeText(text); showToast('Recap copied — paste it anywhere'); haptic('tap');
+    }catch(e){ if(e && e.name!=='AbortError') showToast('Could not share — try again'); }
   });
 
   const applyBtn=document.getElementById('adaptive-apply');
@@ -2984,12 +3503,14 @@ function wireProgressTab(weightHistory){
 }
 
 function wireTodayTab(dateKey, entries, water){
+  const tipNext=document.getElementById('tip-next');
+  if(tipNext) tipNext.addEventListener('click', async ()=>{ State.tipIndex++; haptic('tap'); await render(); });
   document.querySelectorAll('[data-water]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const delta=Utils.num(btn.dataset.water);
       const newMl=Utils.clamp(water.ml+delta,0,15000);
       await WaterLog.set(dateKey, newMl);
-      showToast(delta>0?`+${delta} ml logged`:`${delta} ml removed`);
+      showToast(delta>0?`+${delta} ml logged`:`${delta} ml removed`); haptic('tap');
       await render();
     });
   });
@@ -3013,7 +3534,7 @@ function wireTodayTab(dateKey, entries, water){
       const id=btn.dataset.delEntry;
       const updated=entries.filter(e=>e.id!==id);
       await DayLog.set(dateKey, updated);
-      showToast('Removed from log');
+      showToast('Removed from log'); haptic('remove');
       await render();
     });
   });
@@ -3076,6 +3597,7 @@ function wireAddPanel(dateKey, entries){
       const newEntries=meal.items.map(item=>({ id:Utils.uid('food'), mealType:ap.meal, ...item }));
       const updated=entries.concat(newEntries);
       await DayLog.set(dateKey, updated);
+      haptic('success');
       showToast(`Added "${meal.name}" (${meal.items.length} item${meal.items.length===1?'':'s'})`);
       State.addPanel.open=false;
       await render();
@@ -3088,7 +3610,7 @@ function wireAddPanel(dateKey, entries){
       if(!src) return;
       const { count, ...entry } = src;
       await DayLog.set(dateKey, entries.concat([{ ...entry, id:Utils.uid('food'), mealType:ap.meal }]));
-      showToast(`Added ${src.name}`);
+      showToast(`Added ${src.name}`); haptic('success'); checkBadges();
       State.addPanel.open=false;
       await render();
     });
@@ -3229,7 +3751,7 @@ function wireAddPanel(dateKey, entries){
     };
     const updated=entries.concat([entry]);
     await DayLog.set(dateKey, updated);
-    showToast(`Added ${food.name}`);
+    showToast(`Added ${food.name}`); haptic('success'); checkBadges();
     State.addPanel.open=false;
     await render();
   });
@@ -3259,7 +3781,7 @@ function wireAddPanel(dateKey, entries){
     };
     const updated=entries.concat([entry]);
     await DayLog.set(dateKey, updated);
-    showToast(`Added ${entry.name}`);
+    showToast(`Added ${entry.name}`); haptic('success'); checkBadges();
     State.addPanel.open=false;
     await render();
   });
@@ -3327,6 +3849,7 @@ function wireProgramCard(){
     // Advance the rotation from the day actually trained, so picking a different day keeps the order sensible.
     State.programState.next[prog.id]=(di+1)%prog.days.length; State.programDayPick=null;
     await saveProgramState();
+    haptic('success');
     showToast(toAdd.length ? `« ${day.name} » ajouté : ${toAdd.length} exercice${toAdd.length>1?'s':''}` : 'Ces exercices sont déjà dans la séance du jour');
     await render();
   });
@@ -3489,7 +4012,7 @@ function wireWorkoutTab(dateKey, workout){
 
   document.querySelectorAll('[data-del-exercise]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      const id=btn.dataset.delExercise;
+      const id=btn.dataset.delExercise; haptic('remove');
       const updated={ entries: workout.entries.filter(ex=>ex.id!==id) };
       await WorkoutLog.set(dateKey, updated);
       await render();
@@ -3499,7 +4022,7 @@ function wireWorkoutTab(dateKey, workout){
 
   document.querySelectorAll('[data-del-set]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      const [exId, setId]=btn.dataset.delSet.split('|');
+      const [exId, setId]=btn.dataset.delSet.split('|'); haptic('remove');
       const updated={ entries: workout.entries.map(ex=> ex.id!==exId ? ex : {...ex, sets:ex.sets.filter(s=>s.id!==setId)}) };
       await WorkoutLog.set(dateKey, updated);
       await render();
@@ -3536,12 +4059,47 @@ function wireWorkoutTab(dateKey, workout){
       }
       // Keep the unit, clear the numbers — the next set usually reuses the unit, not the values.
       State.setInputs[exId]={ weightUnit:(State.setInputs[exId]||{}).weightUnit };
-      const updated={ entries: workout.entries.map(ex=> ex.id!==exId ? ex : {...ex, sets:ex.sets.concat([newSet])}) };
-      await WorkoutLog.set(dateKey, updated);
-      await render();
-      const prEl=document.getElementById('pr-list'); if(prEl) renderPRListInto(prEl);
+      await logSet(exId, newSet);
     });
   });
+
+  // One tap repeats the previous set (or, for the first set today, the best set from last session).
+  document.querySelectorAll('[data-repeat-set]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const exId=btn.dataset.repeatSet;
+      const key=Utils.dateKey(State.currentDate);
+      const ex=(await WorkoutLog.get(key)).entries.find(e=>e.id===exId);
+      if(!ex) return;
+      let src=ex.sets[ex.sets.length-1];
+      if(!src && ex.category!=='cardio'){
+        const prev=(await computeLastSessionBests(key))[ex.exerciseName];
+        if(prev) src={ reps:prev.reps, weight:prev.weight, weightUnit:prev.weightUnit };
+      }
+      if(!src){ showToast('No previous set to copy yet — log one first'); return; }
+      await logSet(exId, { id:Utils.uid('set'), reps:src.reps??null, weight:src.weight??null, weightUnit:src.weightUnit||'lb',
+        distanceKm:src.distanceKm??null, durationSec:src.durationSec??null, notes:'' });
+    });
+  });
+}
+
+// Shared by "+ Set" and "↻": saves the set, then celebrates if it beats the previous record.
+async function logSet(exId, newSet){
+  const key=Utils.dateKey(State.currentDate);
+  const cur=await WorkoutLog.get(key);
+  const ex=cur.entries.find(e=>e.id===exId);
+  if(!ex) return;
+  let pr=null;
+  if(ex.category!=='cardio' && newSet.weight>0 && newSet.reps>0){
+    const prev=(await computeAllPRs()).find(p=>p.name===ex.exerciseName && p.type==='strength');
+    const best=Calc.bestSetSummary([newSet]);
+    // Only a "new PR" when there was a record to beat — the very first set isn't a celebration.
+    if(prev && best && best.estKg > prev.estKg+0.01) pr=best;
+  }
+  await WorkoutLog.set(key, { entries:cur.entries.map(e=> e.id!==exId ? e : { ...e, sets:e.sets.concat([newSet]) }) });
+  if(pr){ haptic('pr'); showToast(`🏆 New PR! ${ex.exerciseName} ${pr.weight}${pr.weightUnit} × ${pr.reps}`, true); }
+  else haptic('success');
+  await render();
+  checkBadges();
 }
 
 function wireCoachTab(){
@@ -3579,6 +4137,11 @@ function wireCoachTab(){
    INIT
    ========================================================= */
 boot();
+
+// Installable + offline: the service worker only runs over https (GitHub Pages) or localhost.
+if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(err=>console.warn('SW registration failed', err)); });
+}
 
 })();
 </script>
