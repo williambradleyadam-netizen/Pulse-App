@@ -533,8 +533,13 @@ const Store = (function(){
     }
   }
 
-  async function set(key, value){
+  // Cloud sync listens to every local change; writes that come FROM the cloud pass silent=true
+  // so they aren't echoed straight back up.
+  let changeHook=null;
+  function notify(key, op, silent){ if(changeHook && !silent){ try{ changeHook(key, op); }catch(e){ console.warn(e); } } }
+  async function set(key, value, silent){
     mem[key]=value; // applied immediately so the UI and any subsequent get() never lose this
+    notify(key, 'set', silent);
     if(!hasRealStorage){
       if(hasLocalStorage){
         try{ window.localStorage.setItem(LS_PREFIX+key, JSON.stringify(value)); }
@@ -553,8 +558,9 @@ const Store = (function(){
       return false;
     }
   }
-  async function del(key){
+  async function del(key, silent){
     delete mem[key];
+    notify(key, 'del', silent);
     if(!hasRealStorage){
       if(hasLocalStorage){ try{ window.localStorage.removeItem(LS_PREFIX+key); }catch(e){} }
       return;
@@ -577,7 +583,7 @@ const Store = (function(){
     Object.keys(mem).forEach(k=>{ if(k.indexOf(prefix)===0 && keys.indexOf(k)===-1) keys.push(k); });
     return keys;
   }
-  return { get, set, del, list };
+  return { get, set, del, list, onChange(fn){ changeHook=fn; } };
 })();
 
 /* =========================================================
@@ -1847,6 +1853,7 @@ function renderSetup(){
         <button class="btn accent" id="su-save">Save &amp; start tracking</button>
       </div>
       <div style="text-align:center;margin-top:14px;">
+        <button type="button" class="btn secondary" id="su-google" style="width:100%;margin-bottom:10px;">☁️ Already have an account? Sign in with Google</button>
         <button type="button" class="link-btn" id="su-restore">Already used PULSE? Restore from a backup file</button>
         <input type="file" accept="application/json,.json" id="su-restore-file" style="display:none;"/>
       </div>
@@ -1882,6 +1889,8 @@ function wireSetup(){
   const rBtn=document.getElementById('su-restore'), rFile=document.getElementById('su-restore-file');
   if(rBtn) rBtn.addEventListener('click', ()=>{ rFile.value=''; rFile.click(); });
   if(rFile) rFile.addEventListener('change', e=>{ const f=e.target.files && e.target.files[0]; if(f) importBackup(f); });
+  const gBtn=document.getElementById('su-google');
+  if(gBtn) gBtn.addEventListener('click', ()=>Cloud.signIn());
   const nameEl=document.getElementById('su-name');
   nameEl.addEventListener('input', ()=>{ setupDraft.name=nameEl.value; });
 
@@ -2706,6 +2715,227 @@ function renderPhotos(){
 }
 
 /* =========================================================
+   CLOUD ACCOUNT — optional "Sign in with Google" (Firebase, free
+   Spark plan). Every key is mirrored to users/{uid}/kv/{key} as
+   { v: JSON, t: last-change time }; the newest change wins, so the
+   same account on a phone and a laptop stays in step. The web
+   config below is public by design — the Firestore rules are what
+   keep each person's data private.
+   ========================================================= */
+const FIREBASE_CONFIG={
+  apiKey:'AIzaSyCWJwYZrixgqjtLhZgJc_x1yPjyvRp-WFE',
+  authDomain:'pulse-app-4bb62.firebaseapp.com',
+  projectId:'pulse-app-4bb62',
+  storageBucket:'pulse-app-4bb62.firebasestorage.app',
+  messagingSenderId:'1063586680715',
+  appId:'1:1063586680715:web:2194f9334e660aef8ce98e'
+};
+const Cloud=(function(){
+  const SDK='https://www.gstatic.com/firebasejs/10.12.2/';
+  const LOCAL_ONLY=/^(wger_exercise_cache|sync_meta$|cloud_)/; // caches + sync bookkeeping never leave the device
+  const st={ status:'off', email:'', name:'', lastSync:null, error:'' };
+  let sdkPromise=null, started=false, user=null, unsub=null, meta=null, pending={}, flushTimer=null, rerenderTimer=null;
+
+  function loadScript(src){
+    return new Promise((res,rej)=>{ const el=document.createElement('script'); el.src=src; el.onload=res; el.onerror=()=>rej(new Error('Could not load '+src)); document.head.appendChild(el); });
+  }
+  // The SDK (~300 KB) only downloads for people who actually use an account.
+  function sdk(){
+    if(!sdkPromise) sdkPromise=(async()=>{
+      for(const m of ['app','auth','firestore']) await loadScript(SDK+'firebase-'+m+'-compat.js');
+      if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      return firebase;
+    })().catch(e=>{ sdkPromise=null; throw e; });
+    return sdkPromise;
+  }
+  const col=()=>firebase.firestore().collection('users').doc(user.uid).collection('kv');
+  const docId=k=>encodeURIComponent(k).replace(/\./g,'%2E');
+  const keyOf=id=>{ try{ return decodeURIComponent(id); }catch(e){ return id; } };
+  async function getMeta(){ if(!meta) meta=Object.assign({}, await Store.get('sync_meta', {})); return meta; }
+  function saveMeta(){ Store.set('sync_meta', meta, true); }
+
+  function statusText(){
+    if(st.status==='loading') return 'Connecting to your account…';
+    if(st.status==='syncing') return navigator.onLine===false ? 'Offline — changes will upload when you’re back online' : 'Syncing…';
+    if(st.status==='error') return navigator.onLine===false ? 'Offline — changes will upload when you’re back online' : 'Sync problem — retrying automatically';
+    if(st.status==='synced') return 'All changes saved to your account ✓';
+    return '';
+  }
+  function setStatus(s, err){
+    st.status=s; st.error=err||''; if(s==='synced') st.lastSync=Date.now();
+    const el=document.getElementById('cloud-status');
+    if(el){ el.textContent=statusText(); el.classList.toggle('err', s==='error'); }
+  }
+  // Re-draw with fresh data, but never under someone's fingers while they type.
+  function scheduleRerender(){
+    clearTimeout(rerenderTimer);
+    rerenderTimer=setTimeout(()=>{
+      const a=document.activeElement;
+      if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){ scheduleRerender(); return; }
+      boot();
+    }, 500);
+  }
+
+  // Every local change is time-stamped (even signed out, so a later first sign-in knows
+  // what's newest) and, when signed in, uploaded in a batch a moment later.
+  Store.onChange(async (key, op)=>{
+    if(LOCAL_ONLY.test(key)) return;
+    await getMeta(); meta[key]=Date.now(); saveMeta();
+    if(!user) return;
+    pending[key]=op;
+    clearTimeout(flushTimer); flushTimer=setTimeout(flush, 1200);
+  });
+
+  async function flush(){
+    if(!user) return;
+    const keys=Object.keys(pending); if(!keys.length){ setStatus('synced'); return; }
+    const ops=pending; pending={};
+    setStatus('syncing');
+    try{
+      await getMeta();
+      for(let i=0;i<keys.length;i+=400){ // Firestore batches max out at 500 writes
+        const b=firebase.firestore().batch();
+        for(const k of keys.slice(i,i+400)){
+          const ref=col().doc(docId(k));
+          if(ops[k]==='del') b.delete(ref);
+          else b.set(ref, { v:JSON.stringify(await Store.get(k, null)), t:meta[k]||Date.now() });
+        }
+        await b.commit();
+      }
+      setStatus(Object.keys(pending).length ? 'syncing' : 'synced');
+    }catch(e){
+      console.warn('Cloud sync failed', e);
+      for(const k of keys) if(!pending[k]) pending[k]=ops[k];
+      setStatus('error', e.code||e.message);
+      clearTimeout(flushTimer); flushTimer=setTimeout(flush, 15000);
+    }
+  }
+
+  // First sign-in on a device: the account's copy wins (a new phone gets everything back),
+  // and anything only this device has is uploaded. After that, newest change wins per key.
+  async function mergeFromCloud(){
+    setStatus('syncing');
+    const firstTime=(await Store.get('cloud_uid', null))!==user.uid;
+    await getMeta();
+    const snap=await col().get();
+    const remote={};
+    snap.forEach(d=>{ const x=d.data(); remote[keyOf(d.id)]={ v:x.v, t:Number(x.t)||0 }; });
+    const localKeys=new Set((await Store.list('')).filter(k=>!LOCAL_ONLY.test(k)));
+    let changed=false;
+    for(const [k,r] of Object.entries(remote)){
+      if(LOCAL_ONLY.test(k)) continue;
+      if(firstTime || !localKeys.has(k) || r.t>(meta[k]||0)){
+        let val; try{ val=JSON.parse(r.v); }catch(e){ continue; }
+        await Store.set(k, val, true); meta[k]=r.t; changed=true;
+      }
+    }
+    for(const k of localKeys) if(!remote[k] || (!firstTime && (meta[k]||0)>remote[k].t)) pending[k]='set';
+    saveMeta();
+    await Store.set('cloud_uid', user.uid, true);
+    await flush();
+    return changed;
+  }
+
+  // Live updates from the account's other devices.
+  function listen(){
+    if(unsub) unsub();
+    unsub=col().onSnapshot(snap=>{
+      if(snap.metadata.hasPendingWrites) return; // our own upload echoing back
+      let changed=false;
+      for(const ch of snap.docChanges()){
+        const k=keyOf(ch.doc.id); if(LOCAL_ONLY.test(k)) continue;
+        if(ch.type==='removed'){
+          if(pending[k]!=='set' && meta[k]!=null){ Store.del(k, true); delete meta[k]; changed=true; }
+          continue;
+        }
+        const x=ch.doc.data(), t=Number(x.t)||0;
+        if(t<=(meta[k]||0)) continue;
+        let val; try{ val=JSON.parse(x.v); }catch(e){ continue; }
+        Store.set(k, val, true); meta[k]=t; changed=true;
+      }
+      if(changed){ saveMeta(); scheduleRerender(); }
+      if(!Object.keys(pending).length) setStatus('synced');
+    }, err=>{ console.warn('Cloud listener', err); setStatus('error', err.code); });
+  }
+
+  async function start(){
+    if(started) return; started=true;
+    try{ await sdk(); }catch(e){ started=false; setStatus('error','offline'); throw e; }
+    firebase.auth().onAuthStateChanged(async u=>{
+      if(!u){
+        user=null; if(unsub){ unsub(); unsub=null; }
+        st.email=''; st.name=''; setStatus('off'); scheduleRerender(); return;
+      }
+      user=u; st.email=u.email||''; st.name=u.displayName||'';
+      await Store.set('cloud_on', true, true);
+      try{
+        const firstTime=(await Store.get('cloud_uid', null))!==u.uid;
+        const changed=await mergeFromCloud();
+        listen();
+        if(firstTime) showToast(changed ? 'Signed in — your data is back ✓' : 'Signed in — your data now saves to your account ✓', true);
+      }catch(e){ console.warn(e); setStatus('error', e.code||e.message); }
+      scheduleRerender();
+    });
+  }
+
+  async function signIn(){
+    try{
+      setStatus('loading'); scheduleRerender();
+      await start();
+      const provider=new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt:'select_account' });
+      try{ await firebase.auth().signInWithPopup(provider); }
+      catch(e){
+        const code=e.code||'';
+        // Installed iPhone apps can't open popups — fall back to a full-page redirect.
+        if(/popup-blocked|operation-not-supported|web-storage-unsupported/.test(code)){
+          await Store.set('cloud_on', true, true);
+          return firebase.auth().signInWithRedirect(provider);
+        }
+        if(/popup-closed-by-user|cancelled-popup-request/.test(code)){ setStatus('off'); scheduleRerender(); return; }
+        throw e;
+      }
+    }catch(e){
+      console.error(e); setStatus('off'); scheduleRerender();
+      showToast(e.code==='auth/network-request-failed' || /Could not load/.test(e.message||'') ? 'Sign-in needs an internet connection' : 'Sign-in failed — try again');
+    }
+  }
+  async function signOut(){
+    if(!confirm('Sign out? Your data stays on this device; sign back in any time to sync again.')) return;
+    await flush();
+    await Store.del('cloud_on', true);
+    if(window.firebase && firebase.apps.length) await firebase.auth().signOut();
+    showToast('Signed out');
+  }
+  // Signed in before? Reconnect quietly in the background on every launch.
+  async function autoStart(){
+    if(!(await Store.get('cloud_on', false))) return;
+    setStatus('loading');
+    start().catch(e=>console.warn('Cloud offline', e));
+  }
+  window.addEventListener('online', ()=>{ if(user) flush(); });
+  return { state:st, statusText, signIn, signOut, autoStart };
+})();
+function renderAccountCard(){
+  const c=Cloud.state, esc=Utils.esc;
+  if(!c.email) return `
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div><p class="card-title">☁️ Account</p>
+      <p class="card-sub">Sign in with Google to save everything to your account — use the same account on another phone or computer and it’s all there.</p></div></div>
+    <button class="btn accent" id="cloud-signin" ${c.status==='loading'?'disabled':''}>${c.status==='loading'?'Connecting…':'Sign in with Google'}</button>
+    <div class="status-line">Free and optional — PULSE keeps working without an account.</div>
+  </div>`;
+  return `
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div><p class="card-title">☁️ Account</p>
+      <p class="card-sub">Signed in as <strong>${esc(c.name||c.email)}</strong>${c.name?` · ${esc(c.email)}`:''}</p></div></div>
+    <div class="status-line ${c.status==='error'?'err':''}" id="cloud-status" style="padding-top:0;">${esc(Cloud.statusText())}</div>
+    <button class="btn secondary" id="cloud-signout">Sign out</button>
+    <div class="status-line">Progress photos stay on this device — “Back up now” below saves those too.</div>
+  </div>`;
+}
+
+/* =========================================================
    BACKUP / RESTORE — everything (logs, workouts, programs,
    settings, photos) in one JSON file the user keeps (Files,
    iCloud Drive, Google Drive…), so a cleared browser or a new
@@ -2755,7 +2985,7 @@ function renderDataCard(){
   return `
   <div class="card" style="margin-top:16px;">
     <div class="card-head"><div><p class="card-title">Your data</p>
-      <p class="card-sub">Everything is saved on this device only. Back up to keep it safe, or to move to a new phone.</p></div></div>
+      <p class="card-sub">${Cloud.state.email ? 'Your logs sync to your account. A backup file also keeps your progress photos.' : 'Everything is saved on this device only. Back up to keep it safe, or to move to a new phone.'}</p></div></div>
     <div class="status-line ${lb==null || ago>=14 ? 'err' : ''}" style="padding-top:0;">${label}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn accent" id="backup-export">💾 Back up now</button>
@@ -3342,6 +3572,7 @@ function renderProgressTab(weightHistory){
     </div>
     ${renderBadges()}
     ${renderPhotos()}
+    ${renderAccountCard()}
     ${renderDataCard()}
   `;
 }
@@ -3726,6 +3957,9 @@ function wireProgressTab(weightHistory){
   });
 
   const on=(id,ev,fn)=>{ const el=document.getElementById(id); if(el) el.addEventListener(ev,fn); };
+  // Account
+  on('cloud-signin','click', ()=>Cloud.signIn());
+  on('cloud-signout','click', ()=>Cloud.signOut());
   // Backup / restore
   on('backup-export','click', async ()=>{
     try{ if(await exportBackup()){ showToast('Backup saved ✓'); haptic('success'); await render(); } }
@@ -4525,6 +4759,7 @@ function wireCoachTab(){
    INIT
    ========================================================= */
 boot();
+Cloud.autoStart();
 
 // Installable + offline: the service worker only runs over https (GitHub Pages) or localhost.
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
